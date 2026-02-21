@@ -1,50 +1,59 @@
-// ElevenLabs API service for text-to-speech
-const ELEVENLABS_API_URL = 'https://api.elevenlabs.io/v1';
+import apiService from './apiService';
+
 const DEFAULT_VOICE_ID = 'pNInz6obpgDQGcFmaJgB'; // Adam voice, good for children's stories
 
+// Text-to-speech service using backend API
 export const playAudio = async (text, voiceId = DEFAULT_VOICE_ID) => {
-  const apiKey = process.env.REACT_APP_ELEVENLABS_API_KEY;
-
-  if (!apiKey) {
-    throw new Error('ElevenLabs API key not found. Please add REACT_APP_ELEVENLABS_API_KEY to your .env file');
-  }
-
   try {
-    const response = await fetch(`${ELEVENLABS_API_URL}/text-to-speech/${voiceId}`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'audio/mpeg',
-        'Content-Type': 'application/json',
-        'xi-api-key': apiKey,
-      },
-      body: JSON.stringify({
-        text: text,
-        model_id: 'eleven_monolingual_v1',
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.8,
-          style: 0.2,
-          use_speaker_boost: true
-        }
-      }),
-    });
+    const requestData = {
+      text: text,
+      voiceId: voiceId,
+      stability: 0.5,
+      similarityBoost: 0.8,
+      style: 0.2,
+      useSpeakerBoost: true
+    };
 
-    if (!response.ok) {
-      throw new Error(`ElevenLabs API error: ${response.status}`);
-    }
+    // Get audio blob from backend
+    const audioBlob = await apiService.postBlob('/text-to-speech/generate', requestData);
 
-    const audioBlob = await response.blob();
+    // Create object URL for the audio blob
     const audioUrl = URL.createObjectURL(audioBlob);
     return audioUrl;
   } catch (error) {
-    console.error('Error generating audio:', error);
+    console.error('Error generating audio with backend:', error);
 
-    // For development, you could return a mock audio URL or use browser's speech synthesis
-    return null;
+    // Fallback to browser's speech synthesis
+    console.log('Falling back to browser speech synthesis...');
+    return fallbackTextToSpeech(text);
   }
 };
 
-// Fallback function using browser's built-in speech synthesis (for development/testing)
+// Get available voices from backend
+export const getAvailableVoices = async () => {
+  try {
+    const response = await apiService.get('/text-to-speech/voices');
+
+    if (response.success) {
+      return {
+        recommended: response.data.recommended,
+        all: response.data.all,
+        defaultVoice: response.data.defaultVoice
+      };
+    } else {
+      throw new Error(response.error || 'Failed to fetch voices');
+    }
+  } catch (error) {
+    console.error('Error fetching voices:', error);
+    return {
+      recommended: [],
+      all: [],
+      defaultVoice: DEFAULT_VOICE_ID
+    };
+  }
+};
+
+// Fallback function using browser's built-in speech synthesis
 export const fallbackTextToSpeech = (text) => {
   return new Promise((resolve, reject) => {
     if ('speechSynthesis' in window) {
@@ -58,6 +67,7 @@ export const fallbackTextToSpeech = (text) => {
       const childVoice = voices.find(voice =>
         voice.name.toLowerCase().includes('samantha') ||
         voice.name.toLowerCase().includes('karen') ||
+        voice.name.toLowerCase().includes('alex') ||
         voice.gender === 'female'
       );
 
@@ -65,12 +75,54 @@ export const fallbackTextToSpeech = (text) => {
         utterance.voice = childVoice;
       }
 
-      utterance.onend = () => resolve();
-      utterance.onerror = (error) => reject(error);
+      // Create a mock audio URL that resolves when speech ends
+      const mockAudio = {
+        play: () => {
+          speechSynthesis.speak(utterance);
+          return Promise.resolve();
+        },
+        pause: () => speechSynthesis.pause(),
+        onended: null,
+        onerror: null
+      };
 
-      speechSynthesis.speak(utterance);
+      utterance.onend = () => {
+        if (mockAudio.onended) mockAudio.onended();
+        resolve(mockAudio);
+      };
+
+      utterance.onerror = (error) => {
+        if (mockAudio.onerror) mockAudio.onerror();
+        reject(error);
+      };
+
+      // Return the mock audio object that behaves like a URL
+      resolve('speech-synthesis://mock-audio-url');
     } else {
       reject(new Error('Speech synthesis not supported'));
     }
   });
+};
+
+// Stream audio generation for longer texts
+export const streamAudio = async (text, voiceId = DEFAULT_VOICE_ID) => {
+  try {
+    const requestData = {
+      text: text,
+      voiceId: voiceId,
+      stability: 0.5,
+      similarityBoost: 0.8,
+      style: 0.2,
+      useSpeakerBoost: true
+    };
+
+    // Use streaming endpoint for longer texts
+    const audioBlob = await apiService.postBlob('/text-to-speech/stream', requestData);
+    const audioUrl = URL.createObjectURL(audioBlob);
+    return audioUrl;
+  } catch (error) {
+    console.error('Error streaming audio:', error);
+    // Fallback to regular generation
+    return playAudio(text, voiceId);
+  }
 };

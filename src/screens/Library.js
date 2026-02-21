@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import storyService from '../services/storyService';
 import './Library.css';
 
 const Library = () => {
@@ -7,20 +8,40 @@ const Library = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const userStories = JSON.parse(localStorage.getItem('userStories') || '[]');
-    setStories(userStories);
+    loadStories();
   }, []);
+
+  const loadStories = async () => {
+    try {
+      const result = await storyService.getAllStories();
+      setStories(result.stories);
+    } catch (error) {
+      console.error('Error loading stories:', error);
+      // Fallback to localStorage
+      const userStories = JSON.parse(localStorage.getItem('userStories') || '[]');
+      setStories(userStories);
+    }
+  };
 
   const readStory = (story) => {
     localStorage.setItem('currentStory', JSON.stringify(story));
     navigate('/story');
   };
 
-  const deleteStory = (index) => {
+  const deleteStory = async (index) => {
+    const story = stories[index];
     if (window.confirm('Are you sure you want to delete this story?')) {
-      const updatedStories = stories.filter((_, i) => i !== index);
-      setStories(updatedStories);
-      localStorage.setItem('userStories', JSON.stringify(updatedStories));
+      try {
+        await storyService.deleteStory(story.id);
+        // Reload stories after successful deletion
+        await loadStories();
+      } catch (error) {
+        console.error('Error deleting story:', error);
+        // Fallback to local deletion
+        const updatedStories = stories.filter((_, i) => i !== index);
+        setStories(updatedStories);
+        localStorage.setItem('userStories', JSON.stringify(updatedStories));
+      }
     }
   };
 

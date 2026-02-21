@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import storyService from '../services/storyService';
 import './Upload.css';
 
 const Upload = () => {
@@ -20,19 +21,44 @@ const Upload = () => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (image && description.trim()) {
-      const storyData = {
-        image,
-        description,
-        language,
-        translationLanguage
-      };
-      localStorage.setItem('currentStory', JSON.stringify({
-        ...storyData,
-        imagePreview
-      }));
-      navigate('/loading');
+      try {
+        // Upload image to backend first
+        const uploadResult = await storyService.uploadImage(image, {
+          maxWidth: 1200,
+          quality: 85
+        });
+
+        const storyData = {
+          description,
+          language,
+          translationLanguage,
+          imageUrl: uploadResult.url,
+          imageFileName: uploadResult.originalName
+        };
+
+        localStorage.setItem('currentStory', JSON.stringify({
+          ...storyData,
+          imagePreview: uploadResult.isLocal ? uploadResult.url : imagePreview
+        }));
+
+        navigate('/loading');
+      } catch (error) {
+        console.error('Error uploading image:', error);
+
+        // Fallback to local storage approach
+        const storyData = {
+          description,
+          language,
+          translationLanguage
+        };
+        localStorage.setItem('currentStory', JSON.stringify({
+          ...storyData,
+          imagePreview
+        }));
+        navigate('/loading');
+      }
     }
   };
 

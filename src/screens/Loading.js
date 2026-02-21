@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { generateStory } from '../services/geminiService';
+import storyService from '../services/storyService';
 import './Loading.css';
 
 const Loading = () => {
@@ -33,7 +34,11 @@ const Loading = () => {
           }
         }, 1500);
 
-        const generatedStory = await generateStory(storyData.description, storyData.language);
+        const generatedStory = await generateStory(
+          storyData.description,
+          storyData.language,
+          storyData.translationLanguage
+        );
 
         clearInterval(messageInterval);
         setProgress(100);
@@ -41,15 +46,24 @@ const Loading = () => {
 
         const completeStory = {
           ...storyData,
-          story: generatedStory,
+          storyText: generatedStory,
+          title: `Story #${Date.now()}`,
           createdAt: new Date().toISOString()
         };
 
-        localStorage.setItem('currentStory', JSON.stringify(completeStory));
+        // Save story to backend
+        try {
+          const savedStory = await storyService.createStory(completeStory);
+          localStorage.setItem('currentStory', JSON.stringify(savedStory));
+        } catch (error) {
+          console.error('Error saving story to backend:', error);
+          // Fallback to localStorage only
+          localStorage.setItem('currentStory', JSON.stringify(completeStory));
 
-        const existingStories = JSON.parse(localStorage.getItem('userStories') || '[]');
-        existingStories.unshift(completeStory);
-        localStorage.setItem('userStories', JSON.stringify(existingStories));
+          const existingStories = JSON.parse(localStorage.getItem('userStories') || '[]');
+          existingStories.unshift(completeStory);
+          localStorage.setItem('userStories', JSON.stringify(existingStories));
+        }
 
         setTimeout(() => navigate('/story'), 1000);
       } catch (error) {

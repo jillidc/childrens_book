@@ -26,7 +26,8 @@ const Story = () => {
   }, [navigate, currentAudio]);
 
   const handlePlayStory = async () => {
-    if (!storyData?.story) return;
+    const storyText = storyData?.story || storyData?.storyText;
+    if (!storyText) return;
 
     if (isPlaying && currentAudio) {
       currentAudio.pause();
@@ -37,7 +38,15 @@ const Story = () => {
 
     try {
       setIsPlaying(true);
-      const audioUrl = await playAudio(storyData.story);
+      const audioUrl = await playAudio(storyText);
+
+      // Handle both regular audio URLs and speech synthesis
+      if (audioUrl === 'speech-synthesis://mock-audio-url') {
+        // Browser speech synthesis fallback
+        setIsPlaying(false);
+        return;
+      }
+
       const audio = new Audio(audioUrl);
       setCurrentAudio(audio);
 
@@ -100,9 +109,9 @@ const Story = () => {
 
         <div className="story-content">
           <div className="story-text">
-            {storyData.story ? (
+            {(storyData.story || storyData.storyText) ? (
               <div className="story-paragraphs">
-                {storyData.story.split('\n').map((paragraph, index) => (
+                {(storyData.story || storyData.storyText).split('\n').map((paragraph, index) => (
                   paragraph.trim() && (
                     <p key={index} className="story-paragraph">
                       {paragraph.trim()}
@@ -119,7 +128,7 @@ const Story = () => {
             <button
               className={`play-btn ${isPlaying ? 'playing' : ''}`}
               onClick={handlePlayStory}
-              disabled={!storyData.story}
+              disabled={!(storyData.story || storyData.storyText)}
             >
               {isPlaying ? (
                 <>⏸️ Pause Story</>
