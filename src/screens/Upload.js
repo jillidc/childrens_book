@@ -74,7 +74,7 @@ const Upload = () => {
         </div>
 
         <div className="description-section">
-          <label htmlFor="description">Tell me about your drawing:</label>
+          <label htmlFor="description">Tell me about your MONEY IDK SOMTHING:</label>
           <textarea
             id="description"
             value={description}

@@ -1,7 +1,7 @@
 .upload-screen {
   min-height: 100vh;
   padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(to top, #1e40af, #93c5fd);
 }
 
 .header {
@@ -31,7 +31,7 @@
 
 .library-btn:hover {
   background: white;
-  color: #667eea;
+  color: #1e40af;
 }
 
 .upload-container {
@@ -57,8 +57,8 @@
 }
 
 .upload-box:hover {
-  border-color: #667eea;
-  background: #f8f9ff;
+  border-color: #1e40af;
+  background: #eff6ff;
 }
 
 .upload-placeholder {
@@ -95,7 +95,7 @@
 
 .upload-label {
   display: inline-block;
-  background: #667eea;
+  background: #1e40af;
   color: white;
   padding: 12px 25px;
   border-radius: 25px;
@@ -106,7 +106,7 @@
 }
 
 .upload-label:hover {
-  background: #5a67d8;
+  background: #1e3a8a;
   transform: translateY(-2px);
 }
 
@@ -136,7 +136,7 @@
 
 .description-section textarea:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #1e40af;
 }
 
 .options-section {
