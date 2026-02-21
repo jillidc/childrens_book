@@ -20,23 +20,33 @@
   text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
 }
 
-.library-btn {
-  background: rgba(255,255,255,0.2);
-  color: white;
-  border: 2px solid white;
-  padding: 8px 16px;
-  border-radius: 25px;
+.library-footer {
+  margin-top: auto;
+  padding: 20px 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: bold;
   transition: all 0.3s ease;
-  max-width: 60%;
-  white-space: nowrap;
 }
 
-.library-btn:hover {
-  background: white;
-  color: #1e40af;
+.library-footer:hover {
+  transform: scale(1.05);
+}
+
+.library-btn-img {
+  height: 100px;
+  width: 1000px;
+  max-width: 60%;
+}
+
+.library-btn-text {
+  position: absolute;
+  color: white;
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .upload-container {

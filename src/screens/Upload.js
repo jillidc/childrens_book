@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Upload.css';
 import bgImage from '../assets/Jillian-BG.png';
+import libraryIcon from '../assets/bluescribble.png';
 
 const Upload = () => {
   const [image, setImage] = useState(null);
@@ -122,10 +123,9 @@ const Upload = () => {
         </button>
       </div>
 
-      <div className="library-footer">
-        <button className="library-btn" onClick={goToLibrary}>
-          📚 My Library
-        </button>
+      <div className="library-footer" onClick={goToLibrary}>
+        <img src={libraryIcon} alt="My Library" className="library-btn-img" />
+        <span className="library-btn-text">My Library</span>
       </div>
     </div>
   );
