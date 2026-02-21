@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import storyService from '../services/storyService';
 import './Upload.css';
+import bgImage from '../assets/Jillian-BG.png';
+import libraryIcon from '../assets/bluescribble.png';
 
 const Upload = () => {
   const [image, setImage] = useState(null);
@@ -67,12 +69,9 @@ const Upload = () => {
   };
 
   return (
-    <div className="upload-screen">
+    <div className="upload-screen" style={{ backgroundImage: `url(${bgImage})` }}>
       <div className="header">
         <h1>Draw My Story</h1>
-        <button className="library-btn" onClick={goToLibrary}>
-          📚 My Library
-        </button>
       </div>
 
       <div className="upload-container">
@@ -148,6 +147,11 @@ const Upload = () => {
         >
           Create My Story! ✨
         </button>
+      </div>
+
+      <div className="library-footer" onClick={goToLibrary}>
+        <img src={libraryIcon} alt="My Library" className="library-btn-img" />
+        <span className="library-btn-text">My Library</span>
       </div>
     </div>
   );

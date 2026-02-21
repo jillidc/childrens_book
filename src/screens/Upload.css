@@ -1,46 +1,70 @@
 .upload-screen {
   min-height: 100vh;
   padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-color: #93c5fd;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  flex-direction: column;
 }
 
 .header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  text-align: center;
   margin-bottom: 30px;
 }
 
 .header h1 {
   color: white;
-  font-size: 2.5rem;
+  font-size: 6rem;
   text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
 }
 
-.library-btn {
-  background: rgba(255,255,255,0.2);
-  color: white;
-  border: 2px solid white;
-  padding: 10px 20px;
-  border-radius: 25px;
+.library-footer {
+  margin-top: auto;
+  padding: 20px 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  font-size: 1rem;
-  font-weight: bold;
   transition: all 0.3s ease;
 }
 
-.library-btn:hover {
-  background: white;
-  color: #667eea;
+.library-footer:hover {
+  transform: scale(1.05);
+}
+
+.library-btn-img {
+  height: 100px;
+  width: 1000px;
+  max-width: 60%;
+}
+
+.library-btn-text {
+  position: absolute;
+  color: white;
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .upload-container {
-  max-width: 800px;
+  max-width: 60%;
   margin: 0 auto;
+  flex: 1;
+  width: 100%;
   background: white;
   border-radius: 20px;
-  padding: 40px;
+  padding: 56px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.library-footer {
+  margin-top: auto;
+  padding: 20px 0;
+  display: flex;
+  justify-content: center;
 }
 
 .image-upload {
@@ -57,8 +81,8 @@
 }
 
 .upload-box:hover {
-  border-color: #667eea;
-  background: #f8f9ff;
+  border-color: #1e40af;
+  background: #eff6ff;
 }
 
 .upload-placeholder {
@@ -95,7 +119,7 @@
 
 .upload-label {
   display: inline-block;
-  background: #667eea;
+  background: #1e40af;
   color: white;
   padding: 12px 25px;
   border-radius: 25px;
@@ -106,7 +130,7 @@
 }
 
 .upload-label:hover {
-  background: #5a67d8;
+  background: #1e3a8a;
   transform: translateY(-2px);
 }
 
@@ -136,7 +160,7 @@
 
 .description-section textarea:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #1e40af;
 }
 
 .options-section {
