@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Upload.css';
+import bgImage from '../assets/Jillian-BG.png';
 
 const Upload = () => {
   const [image, setImage] = useState(null);
@@ -41,12 +42,9 @@ const Upload = () => {
   };
 
   return (
-    <div className="upload-screen">
+    <div className="upload-screen" style={{ backgroundImage: `url(${bgImage})` }}>
       <div className="header">
         <h1>Draw My Story</h1>
-        <button className="library-btn" onClick={goToLibrary}>
-          📚 My Library
-        </button>
       </div>
 
       <div className="upload-container">
@@ -74,7 +72,7 @@ const Upload = () => {
         </div>
 
         <div className="description-section">
-          <label htmlFor="description">Tell me about your MONEY IDK SOMTHING:</label>
+          <label htmlFor="description">Tell me about your drawing:</label>
           <textarea
             id="description"
             value={description}
@@ -121,6 +119,12 @@ const Upload = () => {
           disabled={!image || !description.trim()}
         >
           Create My Story! ✨
+        </button>
+      </div>
+
+      <div className="library-footer">
+        <button className="library-btn" onClick={goToLibrary}>
+          📚 My Library
         </button>
       </div>
     </div>
