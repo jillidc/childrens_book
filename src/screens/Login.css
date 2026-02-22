@@ -26,7 +26,7 @@
 .login-subtitle {
   color: #666;
   margin: 0 0 28px;
-  font-size: 1rem;
+  font-size: 1.5rem;
 }
 
 .login-form {
@@ -67,14 +67,14 @@
   color: #d32f2f;
   padding: 10px 14px;
   border-radius: 10px;
-  font-size: 0.9rem;
+  font-size: 1rem;
   text-align: left;
 }
 
 .login-submit {
   display: inline-block;
   background: transparent;
-  background-image: url('../assets/small-blue-button.PNG');
+  background-image: url('../assets/blue-1.PNG');
   background-size: 100% 100%;
   background-position: center;
   background-repeat: no-repeat;
@@ -106,7 +106,7 @@
 
 .login-toggle {
   margin-top: 20px;
-  font-size: 0.9rem;
+  font-size: 1.2rem;
   color: #666;
   display: flex;
   align-items: center;
@@ -120,8 +120,10 @@
   color: #667eea;
   font-weight: 600;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 1.2rem;
+  font-family: 'Patrick Hand', 'Comic Sans MS', cursive, sans-serif;
   padding: 0;
+  line-height: 1;
 }
 
 .toggle-btn:hover {
@@ -133,16 +135,17 @@
   align-items: center;
   gap: 12px;
   margin: 20px 0;
-  color: #aaa;
-  font-size: 0.85rem;
+  color: #000051;
+  font-size: 1.2rem;
+  font-weight: bold;
 }
 
 .login-divider::before,
 .login-divider::after {
   content: '';
   flex: 1;
-  height: 1px;
-  background: #ddd;
+  height: 3px;
+  background: #000051;
 }
 
 .guest-btn {
@@ -150,13 +153,13 @@
   align-items: center;
   justify-content: center;
   background: transparent;
-  background-image: url('../assets/small-blue-button.PNG');
+  background-image: url('../assets/blue-3.PNG');
   background-size: 100% 100%;
   background-position: center;
   background-repeat: no-repeat;
   color: white;
   border: none;
-  padding: 18px 110px 25px 110px;
+  padding: 20px 110px 25px 110px;
   font-size: 1.5rem;
   font-weight: bold;
   cursor: pointer;
