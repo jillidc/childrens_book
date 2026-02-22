@@ -10,17 +10,37 @@ const PORT = process.env.PORT || 5000;
 // Security middleware
 app.use(helmet());
 
-// CORS first so preflight and all responses get Access-Control-* headers
-// FRONTEND_URL (comma-separated) + any *.vercel.app so preview deploys work
+// Allowed origins: FRONTEND_URL (comma-separated) + any *.vercel.app
 const frontendUrls = (process.env.FRONTEND_URL || 'http://localhost:3000')
   .split(',')
   .map(s => s.trim())
   .filter(Boolean);
+function isAllowedOrigin(origin) {
+  if (!origin) return false;
+  if (frontendUrls.includes(origin)) return true;
+  if (origin.endsWith('.vercel.app')) return true;
+  return false;
+}
+
+// Handle preflight OPTIONS first so it always gets CORS headers (before rate limit, etc.)
+app.use('/api', (req, res, next) => {
+  if (req.method !== 'OPTIONS') return next();
+  const origin = req.headers.origin;
+  if (isAllowedOrigin(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Max-Age', '86400');
+    return res.status(204).end();
+  }
+  next();
+});
+
 const corsOptions = {
   origin(origin, callback) {
     if (!origin) return callback(null, true);
-    if (frontendUrls.includes(origin)) return callback(null, true);
-    if (origin.endsWith('.vercel.app')) return callback(null, true);
+    if (isAllowedOrigin(origin)) return callback(null, true);
     callback(null, false);
   },
   credentials: true,
