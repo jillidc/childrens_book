@@ -8,6 +8,7 @@ import bookPjImage from '../assets/book-PJ.PNG';
 import createImg from '../assets/create.png';
 import cloudDrawBg from '../assets/blue-cloud-bg.png';
 import blue1Img from '../assets/blue-1.PNG';
+import trashImg from '../assets/trash.PNG';
 
 const Library = () => {
   const [stories, setStories] = useState([]);
@@ -118,7 +119,9 @@ const Library = () => {
                       className="story-thumbnail"
                     />
                   ) : (
-                    <div className="story-thumbnail-placeholder">📖</div>
+                    <div className="story-thumbnail-placeholder">
+                      <img src={bookPjImage} alt="Story" className="story-thumbnail-placeholder-img" />
+                    </div>
                   )}
                 </div>
 
@@ -156,7 +159,7 @@ const Library = () => {
                       className="delete-btn"
                       onClick={() => deleteStory(index)}
                     >
-                      🗑️
+                      <img src={trashImg} alt="Delete" className="delete-btn-img" />
                     </button>
                   </div>
                 </div>
