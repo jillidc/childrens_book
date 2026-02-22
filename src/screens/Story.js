@@ -266,7 +266,7 @@ const Story = () => {
       <div className="scrolling-clouds" style={{ backgroundImage: `url(${cloudsPng})` }} />
       <div className="story-header">
         <button className="back-btn" onClick={goBack}>&larr; Back</button>
-        <h1>Your Story</h1>
+        <h1>{storyData.title || 'Your Story'}</h1>
         <button className="done-btn" onClick={goToDone}>Done</button>
       </div>
 
