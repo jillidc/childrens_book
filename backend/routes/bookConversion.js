@@ -61,23 +61,50 @@ async function identifyScenes(simplifiedText) {
 }
 
 /**
- * Generate book illustrations SEQUENTIALLY to stay within
- * preview-model rate limits. Character summary is threaded
- * into every prompt for visual consistency.
+ * Generate book illustrations SEQUENTIALLY.
+ *
+ * Two-step pipeline per scene (same as Drawing Imagination):
+ *   1. TEXT MODEL  — expand the scene description into a rich visual brief
+ *                    with progression context from the previous illustration.
+ *   2. IMAGE MODEL — render from the expanded brief.
  */
 async function generateBookImages(sceneDescriptions, characterSummary) {
   const results = [];
+  let previousSceneSummary = '';
+
   for (let i = 0; i < sceneDescriptions.length; i++) {
-    const desc = sceneDescriptions[i];
-    const prompt = prompts.getBookSceneIllustrationPrompt(desc, characterSummary);
+    const desc   = sceneDescriptions[i];
+    const sceneNum = i + 1;
+
+    // ── Step 1: expand scene description → rich visual brief ──
+    // Use EXPANSION_MODEL (gemini-2.0-flash, 15 RPM) not TEXT_MODEL (gemini-2.5-flash, 5 RPM)
+    let expandedScene = desc;
+    try {
+      const expansionPrompt = prompts.getSceneExpansionPrompt(
+        desc, previousSceneSummary, characterSummary, sceneNum, sceneDescriptions.length
+      );
+      expandedScene = await gemini.generateText(expansionPrompt, {
+        model: gemini.EXPANSION_MODEL,
+        temperature: 0.95,
+        maxOutputTokens: 450
+      });
+      console.log(`[Book scene ${sceneNum}] Expanded: ${expandedScene.slice(0, 120)}…`);
+    } catch (e) {
+      console.warn(`[Book scene ${sceneNum}] Expansion failed, using raw desc: ${e.message}`);
+    }
+
+    // ── Step 2: generate illustration ──
+    const prompt = prompts.getPageIllustrationPrompt(expandedScene, characterSummary, sceneNum, sceneDescriptions.length);
     try {
       const imageResult = await gemini.generateImage(prompt, null, { aspectRatio: '4:3' });
       const buffer = Buffer.from(imageResult.data, 'base64');
       const url = await uploadOrDataUrl(buffer, imageResult.mimeType || 'image/png');
-      results.push({ index: i + 1, description: desc, imageUrl: url });
+      results.push({ index: sceneNum, description: desc, imageUrl: url });
+      previousSceneSummary = expandedScene.slice(0, 350);
     } catch (err) {
-      console.warn(`Book image gen failed for scene ${i + 1}: ${err.message}`);
-      results.push({ index: i + 1, description: desc, imageUrl: null });
+      console.warn(`[Book scene ${sceneNum}] Image gen failed: ${err.message}`);
+      results.push({ index: sceneNum, description: desc, imageUrl: null });
+      previousSceneSummary = expandedScene.slice(0, 350);
     }
   }
   return results;

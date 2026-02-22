@@ -53,25 +53,58 @@ async function generateStoryPages(parsedJsonOrDescription, language, useJson) {
 }
 
 /**
- * Generate illustrations SEQUENTIALLY (not parallel) to stay
- * within preview-model rate limits. Each page prompt carries
- * the character DNA + art-style note for visual consistency.
+ * Generate illustrations SEQUENTIALLY to stay within preview-model rate limits.
+ *
+ * Two-step pipeline per page:
+ *   1. TEXT MODEL  — expand the short page sentence into a rich visual brief
+ *                    that includes scene progression context from the previous page.
+ *   2. IMAGE MODEL — render the expanded brief (no reference drawing passed,
+ *                    so each image is creative rather than a copy of the upload).
+ *
+ * The reference drawing is intentionally NOT forwarded to the image model so
+ * illustrations are creative and distinct rather than all resembling the upload.
  */
-async function generatePageImages(pages, parsedJson, referenceImage) {
+async function generatePageImages(pages, parsedJson) {
   const characterDNA = prompts.buildCharacterDNA(parsedJson);
-  const artStyle = parsedJson?.artStyle || '';
   const results = [];
+  let previousSceneSummary = '';
 
-  for (const pageText of pages) {
-    const prompt = prompts.getPageIllustrationPrompt(pageText, characterDNA, artStyle);
+  for (let i = 0; i < pages.length; i++) {
+    const pageText = pages[i];
+    const pageNum  = i + 1;
+
+    // ── Step 1: expand page text → rich visual scene description ──
+    // Use EXPANSION_MODEL (gemini-2.0-flash, 15 RPM) not TEXT_MODEL (gemini-2.5-flash, 5 RPM)
+    let expandedScene = pageText;
     try {
-      const imageResult = await gemini.generateImage(prompt, referenceImage, { aspectRatio: '4:3' });
+      const expansionPrompt = prompts.getSceneExpansionPrompt(
+        pageText, previousSceneSummary, characterDNA, pageNum, pages.length
+      );
+      expandedScene = await gemini.generateText(expansionPrompt, {
+        model: gemini.EXPANSION_MODEL,
+        temperature: 0.95,
+        maxOutputTokens: 450
+      });
+      console.log(`[Page ${pageNum}] Scene expanded: ${expandedScene.slice(0, 120)}…`);
+    } catch (e) {
+      console.warn(`[Page ${pageNum}] Scene expansion failed, using raw text: ${e.message}`);
+    }
+
+    // ── Step 2: generate illustration from expanded scene ──
+    const prompt = prompts.getPageIllustrationPrompt(expandedScene, characterDNA, pageNum, pages.length);
+    try {
+      // null referenceImage — let the model be creative, not bound to the drawing
+      const imageResult = await gemini.generateImage(prompt, null, { aspectRatio: '4:3' });
       const buffer = Buffer.from(imageResult.data, 'base64');
       const url = await uploadOrDataUrl(buffer, imageResult.mimeType || 'image/png');
       results.push({ text: pageText, imageUrl: url });
+      // Store the expanded scene as context for the next page's progression brief
+      previousSceneSummary = expandedScene.slice(0, 350);
     } catch (err) {
-      console.warn(`Image gen failed for page, skipping: ${err.message}`);
+      console.warn(`[Page ${pageNum}] Image gen failed: ${err.message}`);
       results.push({ text: pageText, imageUrl: null });
+      // Even on failure, carry forward what we planned so the next page still progresses
+      previousSceneSummary = expandedScene.slice(0, 350);
     }
   }
   return results;
@@ -134,11 +167,7 @@ router.post('/', async (req, res) => {
 
       fullText = pages.join('\n\n');
 
-      const pageResults = await generatePageImages(
-        pages,
-        parsedJson || {},
-        imageForParsing
-      );
+      const pageResults = await generatePageImages(pages, parsedJson || {});
 
       if (translationLanguage && translationLanguage !== language) {
         try {
