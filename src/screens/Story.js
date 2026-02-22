@@ -275,7 +275,7 @@ const Story = () => {
         <img src={openBook} alt="Book frame" className="book-frame" />
 
         <div className="book-pages">
-          <div className={`book-page left-page ${isFlipping && flipDirection === 'backward' ? 'flip-backward' : ''}`}>
+          <div className={`book-page left-page ${isFlipping && flipDirection.startsWith('backward') ? `flip-${flipDirection}` : ''}`}>
             <div className="page-content">
               {leftPage && (
                 <>
@@ -295,7 +295,7 @@ const Story = () => {
             </div>
           </div>
 
-          <div className={`book-page right-page ${isFlipping && flipDirection === 'forward' ? 'flip-forward' : ''}`}>
+          <div className={`book-page right-page ${isFlipping && flipDirection.startsWith('forward') ? `flip-${flipDirection}` : ''}`}>
             <div className="page-content">
               {rightPage ? (
                 <>
