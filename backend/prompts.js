@@ -1,12 +1,12 @@
 /**
- * Versioned prompt constants for Gemini.
+ * Versioned prompt constants for Gemini / Imagen.
  * All prompts live here — no inline hardcoding in routes.
  *
- * Models:
- *   Text / Image-Parsing: gemini-2.5-flash  (TEXT_MODEL in geminiClient)
- *   Image Generation:     gemini-2.5-flash-image       (IMAGE_MODEL in geminiClient)
+ * Models (paid tier — $300 credits):
+ *   Story gen / drawing parse / expansion : gemini-2.5-flash          (TEXT_MODEL / EXPANSION_MODEL)
+ *   Image generation                      : imagen-4.0-generate-001   (IMAGE_MODEL — full quality)
  *
- * Version: 2.0.0
+ * Version: 3.1.0
  */
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -84,30 +84,85 @@ function buildCharacterDNA(parsedJson) {
 }
 
 /**
- * ILLUSTRATION_STYLE_PREFIX — prepended to EVERY page image prompt.
- * Anchors art style so the model doesn't drift between pages.
+ * ILLUSTRATION_STYLE_SUFFIX — appended AFTER the scene description in every image prompt.
+ *
+ * Imagen 4 best practice: lead with the scene/subject, then add style modifiers.
+ * Keep total prompt under 480 tokens. This suffix is ~35 tokens.
  */
-const ILLUSTRATION_STYLE_PREFIX = [
-  'Art style: child-friendly storybook illustration.',
-  'Soft rounded shapes, warm color palette (yellows, oranges, soft greens, sky blues).',
-  'Simple backgrounds, no photorealistic details.',
-  'Gentle lighting, no harsh shadows.',
-  'Characters have large expressive eyes, friendly expressions.',
-  'No text, no UI elements, no dark or scary imagery.',
-  'Consistent character design across all pages.'
-].join(' ');
+const ILLUSTRATION_STYLE_SUFFIX =
+  'vibrant 2D flat children\'s picture book illustration, ' +
+  'bright saturated colors, clean bold outlines, ' +
+  'cute expressive characters with large friendly eyes, ' +
+  'detailed storybook background, ' +
+  'by a professional children\'s book illustrator, high quality, detailed';
 
 /**
- * getPageIllustrationPrompt — image generation prompt for one story page.
- * Includes the style prefix + character DNA + the specific scene.
- * Model: gemini-2.5-flash-image
+ * getSceneExpansionPrompt — STEP 1 before image generation.
+ * Uses the text model to expand a short page sentence into a rich,
+ * specific visual description that the image model can act on.
+ * Includes previous-scene context so each image shows clear progression.
+ *
+ * @param {string} pageText          - The short story sentence(s) for this page
+ * @param {string} previousSummary   - 1–2 sentence summary of the previous illustration
+ * @param {string} characterDNA      - Character appearance block
+ * @param {number} pageNum           - 1-based page index
+ * @param {number} totalPages        - Total pages in the story
  */
-function getPageIllustrationPrompt(pageText, characterDNA = '', artStyleNote = '') {
-  const parts = [ILLUSTRATION_STYLE_PREFIX];
-  if (artStyleNote) parts.push(`Drawing style reference: ${artStyleNote}.`);
-  if (characterDNA) parts.push(`Characters (keep consistent): ${characterDNA}`);
-  parts.push(`Scene to illustrate: ${pageText}`);
-  return parts.join('\n');
+function getSceneExpansionPrompt(pageText, previousSummary = '', characterDNA = '', pageNum = 1, totalPages = 1) {
+  const isFirst = pageNum === 1;
+  const isLast  = pageNum === totalPages;
+
+  const stageNote = isFirst
+    ? 'This is the OPENING scene. Establish the world and main character warmly and invitingly.'
+    : isLast
+    ? 'This is the FINAL scene. Show resolution, happiness, and a satisfying sense of completion.'
+    : `This is scene ${pageNum} of ${totalPages} — mid-story. Show clear narrative progress.`;
+
+  const progressionBlock = previousSummary
+    ? `\nPrevious illustration summary: "${previousSummary}"\nCRITICAL: This new scene must look CLEARLY DIFFERENT from the previous one. Change: the location OR time of day OR weather OR the characters' positions/actions OR the color mood — ideally several of these at once. The reader must be able to tell the story has moved forward.`
+    : '';
+
+  return `You are a storyboard artist writing a visual brief for a children's picture-book illustrator.
+
+Story page text: "${pageText}"
+${characterDNA ? `Characters: ${characterDNA}` : ''}${progressionBlock}
+${stageNote}
+
+Write 2–3 sentences describing what to paint. Include:
+- The main action and characters' expressions/poses in the foreground
+- The setting: time of day, weather, indoor/outdoor, key colors and lighting mood
+- One unique visual detail that makes this scene memorable (e.g. fireflies, falling snow, rainbow, etc.)
+- Camera framing (wide shot / close-up / bird's-eye / low angle)
+
+Be specific and vivid. Output ONLY the description — no labels or preamble.`;
+}
+
+/**
+ * getPageIllustrationPrompt — STEP 2, image generation.
+ *
+ * Imagen 4 format: scene description FIRST, style modifiers AFTER.
+ * Total prompt target: well under 480 tokens.
+ *
+ * @param {string} expandedScene  - Output of getSceneExpansionPrompt (2–3 sentences)
+ * @param {string} characterDNA   - Character appearance block
+ * @param {number} pageNum        - 1-based page index
+ * @param {number} totalPages     - Total pages
+ */
+function getPageIllustrationPrompt(expandedScene, characterDNA = '', pageNum = 1, totalPages = 1) {
+  const parts = [];
+
+  // Scene first (Imagen best practice: subject/action leads the prompt)
+  parts.push(expandedScene.trim());
+
+  // Character reference (keep concise — DNA is already brief)
+  if (characterDNA) {
+    parts.push(`Characters: ${characterDNA}`);
+  }
+
+  // Style modifiers appended last
+  parts.push(ILLUSTRATION_STYLE_SUFFIX);
+
+  return parts.join('. ');
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -164,15 +219,16 @@ ${simplifiedSection}
 
 /**
  * BOOK_ILLUSTRATION_STYLE — style prefix for book-conversion illustrations.
- * Same block prepended to every scene so style stays locked.
+ * Same visual voice as ILLUSTRATION_STYLE_PREFIX but for converted books.
  */
 const BOOK_ILLUSTRATION_STYLE = [
-  'Art style: consistent children\'s book illustration throughout.',
-  'Warm palette (soft yellows, greens, sky blues, gentle oranges).',
-  'Soft rounded shapes, simple and inviting.',
-  'Characters have large eyes, friendly faces.',
-  'Same visual style on every page — no style drift.',
-  'No photorealistic, dark, or complex imagery. Ages 4–8.'
+  '2D flat digital illustration, vibrant children\'s picture book style.',
+  'Bright saturated colors, bold primaries and warm pastels.',
+  'Clean outlines, flat color fills, soft rounded shapes.',
+  'Characters have large friendly eyes and expressive faces.',
+  'Rich storybook backgrounds, clear foreground/midground/background.',
+  'Magical warm atmosphere, high contrast, crisp and clean.',
+  'Ages 4–8 appropriate, no dark or complex imagery.'
 ].join(' ');
 
 /**
@@ -230,7 +286,8 @@ module.exports = {
   DRAWING_PARSE_JSON,
   getStoryFromJsonPrompt,
   buildCharacterDNA,
-  ILLUSTRATION_STYLE_PREFIX,
+  ILLUSTRATION_STYLE_SUFFIX,
+  getSceneExpansionPrompt,
   getPageIllustrationPrompt,
   getSimplifyPrompt,
   SCENE_IDENTIFICATION,

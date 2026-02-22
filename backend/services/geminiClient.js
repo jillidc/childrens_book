@@ -1,10 +1,15 @@
 /**
- * Gemini API client using @google/genai.
- * Text + Image Parsing: gemini-3-flash-preview
- * Image Generation:     gemini-2.5-flash-image
+ * Gemini / Imagen API client using @google/genai.
  *
- * Preview models have tighter rate limits. Every call retries
- * with exponential backoff on 429 / 503 / RESOURCE_EXHAUSTED.
+ * Model roles (paid tier — $300 credits):
+ *   TEXT_MODEL      — story gen, drawing parse, scene expansion  gemini-2.5-flash
+ *   EXPANSION_MODEL — scene expansion per page                   gemini-2.5-flash  (same model, separate constant)
+ *   IMAGE_MODEL     — full-quality 2D illustration generation    imagen-4.0-generate-001
+ *
+ * With billing enabled, gemini-2.5-flash runs at ~1000 RPM and 4M TPM (paid).
+ * Imagen 4 (full quality, not "Fast") delivers the best picture-book illustrations.
+ *
+ * Every call retries with exponential backoff on 429 / 503 / RESOURCE_EXHAUSTED.
  */
 
 let ai = null;
@@ -18,8 +23,12 @@ async function getClient() {
   return ai;
 }
 
-const TEXT_MODEL = 'gemini-2.5-flash';
-const IMAGE_MODEL = 'gemini-2.5-flash-preview-image-generation';
+// Paid-tier models — billing enabled ($300 credits):
+//   gemini-2.5-flash        : ~1000 RPM / 4M TPM — best text quality available
+//   imagen-4.0-generate-001 : full-quality Imagen 4, pay-per-image
+const TEXT_MODEL      = 'gemini-2.5-flash';             // story gen & drawing parse
+const EXPANSION_MODEL = 'gemini-2.5-flash';             // scene expansion (same model, no free-tier workaround needed)
+const IMAGE_MODEL     = 'imagen-4.0-generate-001';      // Imagen 4 full quality (not Fast)
 
 const MAX_RETRIES = 4;
 const INITIAL_BACKOFF_MS = 2000;
@@ -73,8 +82,43 @@ async function generateTextWithImage(imageBase64, textPrompt, options = {}) {
   return generateText(contents, options);
 }
 
-/** Generate one image. Returns { data: base64, mimeType }. */
+/**
+ * Generate one illustration. Returns { data: base64, mimeType }.
+ *
+ * Routing logic:
+ *  - imagen-* models  → client.models.generateImages() (Imagen 4 API)
+ *  - gemini-* models  → client.models.generateContent() with responseModalities: IMAGE
+ */
 async function generateImage(prompt, referenceImage = null, options = {}) {
+  const model = options.imageModel || IMAGE_MODEL;
+
+  // ── Imagen 4 path ────────────────────────────────────────────────────────
+  if (model.startsWith('imagen-')) {
+    return withRetry(async () => {
+      const client = await getClient();
+
+      // Only pass params documented in the JS SDK spec.
+      // negativePrompt and outputMimeType are Python-only; omitting avoids silent rejections.
+      const response = await client.models.generateImages({
+        model,
+        prompt,
+        config: {
+          numberOfImages: 1,
+          aspectRatio: options.aspectRatio || '4:3',
+          personGeneration: 'allow_all'  // needed so child characters can be illustrated
+        }
+      });
+
+      const generated = response.generatedImages?.[0];
+      if (!generated?.image?.imageBytes) throw new Error('No image returned from Imagen');
+      return {
+        data: generated.image.imageBytes,   // already base64
+        mimeType: generated.image.mimeType || 'image/jpeg'
+      };
+    }, `generateImage(${model})`);
+  }
+
+  // ── Gemini generateContent path (legacy / fallback) ──────────────────────
   return withRetry(async () => {
     const client = await getClient();
     const contents = referenceImage
@@ -88,18 +132,14 @@ async function generateImage(prompt, referenceImage = null, options = {}) {
       imageConfig: { aspectRatio: options.aspectRatio || '4:3' },
       ...options.config
     };
-    const response = await client.models.generateContent({
-      model: options.imageModel || IMAGE_MODEL,
-      contents,
-      config
-    });
+    const response = await client.models.generateContent({ model, contents, config });
     const part = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
     if (!part?.inlineData?.data) throw new Error('No image in Gemini response');
     return {
       data: part.inlineData.data,
       mimeType: part.inlineData.mimeType || 'image/png'
     };
-  }, 'generateImage');
+  }, `generateImage(${model})`);
 }
 
 /** Parse JSON from model text (strip markdown fences if present). */
@@ -118,6 +158,7 @@ module.exports = {
   generateImage,
   parseJsonFromText,
   TEXT_MODEL,
+  EXPANSION_MODEL,
   IMAGE_MODEL,
   withRetry
 };

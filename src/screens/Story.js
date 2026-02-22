@@ -188,9 +188,11 @@ const Story = () => {
     return <div className="loading">Loading story...</div>;
   }
 
+  // Only show AI-generated images (imageUrl from Imagen 4).
+  // Never fall back to the original drawing thumbnail — it looks blurry at full size.
   const currentImage = hasMultiplePages
-    ? (pages[currentPageIndex]?.imageUrl || storyData.imagePreview)
-    : (storyData.imagePreview || storyData.imageUrl);
+    ? (pages[currentPageIndex]?.imageUrl || null)
+    : null;
 
   return (
     <div className="story-screen">
@@ -201,29 +203,44 @@ const Story = () => {
       </div>
 
       <div className="story-container">
-        {/* ── Text ── */}
+        {/* ── Text ── word highlight works on every page/paragraph ── */}
         <div className="story-text-block">
           <div className="story-paragraphs">
-            {hasMultiplePages ? (
-              <p className="story-paragraph">
-                <HighlightedText
-                  text={currentPageText}
-                  charStart={highlightRange.start}
-                  charEnd={highlightRange.end}
-                  highlightRef={highlightRef}
-                />
-              </p>
-            ) : (
-              fullText.split('\n').map((para, i) =>
-                para.trim() ? (
-                  <p key={i} className="story-paragraph">{para.trim()}</p>
-                ) : null
-              )
-            )}
+            {(() => {
+              // Build paragraph list with cumulative offsets so charIndex
+              // (which counts across the whole currentPageText string) maps
+              // correctly to the right paragraph.
+              const paras = currentPageText.split('\n').filter(p => p.trim());
+              let offset = 0;
+              return paras.map((para, i) => {
+                const paraStart = currentPageText.indexOf(para.trim(), offset);
+                const paraEnd   = paraStart + para.trim().length;
+                offset = paraEnd;
+
+                const hlStart = highlightRange.start;
+                const hlEnd   = highlightRange.end;
+                const inThisPara =
+                  hlStart != null &&
+                  hlEnd   != null &&
+                  hlStart >= paraStart &&
+                  hlStart <  paraEnd;
+
+                return (
+                  <p key={i} className="story-paragraph">
+                    <HighlightedText
+                      text={para.trim()}
+                      charStart={inThisPara ? hlStart - paraStart : null}
+                      charEnd={inThisPara ? hlEnd   - paraStart : null}
+                      highlightRef={inThisPara ? highlightRef : null}
+                    />
+                  </p>
+                );
+              });
+            })()}
           </div>
         </div>
 
-        {/* ── Image below text ── */}
+        {/* ── Image below text ── only show AI-generated images; placeholder otherwise */}
         <div className="story-image-block">
           {currentImage ? (
             <img
@@ -234,7 +251,7 @@ const Story = () => {
           ) : (
             <div className="story-image-placeholder">
               <span className="placeholder-text">📖</span>
-              <span className="placeholder-label">Illustration loading…</span>
+              <span className="placeholder-label">Illustration generating…</span>
             </div>
           )}
         </div>
