@@ -13,6 +13,9 @@ class Story {
     this.imageUrl = data.imageUrl;
     this.imageFileName = data.imageFileName;
     this.audioUrl = data.audioUrl || null;
+    this.sourceType = data.sourceType || null; // 'drawing' | 'pdf_book'
+    this.sourceFileKey = data.sourceFileKey || null;
+    this.generatedImageUrl = data.generatedImageUrl || null;
     this.createdAt = data.createdAt || new Date();
     this.updatedAt = data.updatedAt || new Date();
   }
@@ -21,9 +24,9 @@ class Story {
     const createUsersTable = `
       CREATE TABLE IF NOT EXISTS users (
         id VARCHAR(36) PRIMARY KEY,
-        wallet_address VARCHAR(255) UNIQUE,
         username VARCHAR(100),
         email VARCHAR(255),
+        password_hash VARCHAR(255),
         created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
         updated_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
       )
@@ -41,6 +44,9 @@ class Story {
         image_url VARCHAR(512),
         image_file_name VARCHAR(255),
         audio_url VARCHAR(512),
+        source_type VARCHAR(50),
+        source_file_key VARCHAR(512),
+        generated_image_url VARCHAR(512),
         created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
         updated_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
         FOREIGN KEY (user_id) REFERENCES users(id)
@@ -62,21 +68,25 @@ class Story {
       INSERT INTO stories (
         id, user_id, title, description, story_text, language,
         translation_language, image_url, image_file_name, audio_url,
+        source_type, source_file_key, generated_image_url,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
       this.id,
-      this.userId,
+      this.userId ?? null,
       this.title,
       this.description,
       this.storyText,
       this.language,
-      this.translationLanguage,
-      this.imageUrl,
-      this.imageFileName,
-      this.audioUrl,
+      this.translationLanguage ?? null,
+      this.imageUrl ?? null,
+      this.imageFileName ?? null,
+      this.audioUrl ?? null,
+      this.sourceType ?? null,
+      this.sourceFileKey ?? null,
+      this.generatedImageUrl ?? null,
       this.createdAt,
       this.updatedAt
     ];
@@ -96,7 +106,9 @@ class Story {
     const query = `
       UPDATE stories
       SET title = ?, description = ?, story_text = ?, language = ?,
-          translation_language = ?, audio_url = ?, updated_at = ?
+          translation_language = ?, audio_url = ?,
+          source_type = ?, source_file_key = ?, generated_image_url = ?,
+          updated_at = ?
       WHERE id = ?
     `;
 
@@ -107,6 +119,9 @@ class Story {
       this.language,
       this.translationLanguage,
       this.audioUrl,
+      this.sourceType,
+      this.sourceFileKey,
+      this.generatedImageUrl,
       this.updatedAt,
       this.id
     ];
@@ -137,6 +152,9 @@ class Story {
           imageUrl: rows[0].IMAGE_URL,
           imageFileName: rows[0].IMAGE_FILE_NAME,
           audioUrl: rows[0].AUDIO_URL,
+          sourceType: rows[0].SOURCE_TYPE,
+          sourceFileKey: rows[0].SOURCE_FILE_KEY,
+          generatedImageUrl: rows[0].GENERATED_IMAGE_URL,
           createdAt: rows[0].CREATED_AT,
           updatedAt: rows[0].UPDATED_AT
         });
@@ -169,6 +187,9 @@ class Story {
         imageUrl: row.IMAGE_URL,
         imageFileName: row.IMAGE_FILE_NAME,
         audioUrl: row.AUDIO_URL,
+        sourceType: row.SOURCE_TYPE,
+        sourceFileKey: row.SOURCE_FILE_KEY,
+        generatedImageUrl: row.GENERATED_IMAGE_URL,
         createdAt: row.CREATED_AT,
         updatedAt: row.UPDATED_AT
       }));
@@ -194,6 +215,9 @@ class Story {
         imageUrl: row.IMAGE_URL,
         imageFileName: row.IMAGE_FILE_NAME,
         audioUrl: row.AUDIO_URL,
+        sourceType: row.SOURCE_TYPE,
+        sourceFileKey: row.SOURCE_FILE_KEY,
+        generatedImageUrl: row.GENERATED_IMAGE_URL,
         createdAt: row.CREATED_AT,
         updatedAt: row.UPDATED_AT
       }));
@@ -227,6 +251,9 @@ class Story {
       imageUrl: this.imageUrl,
       imageFileName: this.imageFileName,
       audioUrl: this.audioUrl,
+      sourceType: this.sourceType,
+      sourceFileKey: this.sourceFileKey,
+      generatedImageUrl: this.generatedImageUrl,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt
     };

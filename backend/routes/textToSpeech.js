@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
-const axios = require('axios');
+const { apiClient } = require('../lib/apiClient');
+const { storageService } = require('../config/storage');
 
 // Rachel — warm, calm, soothing female voice (ideal for children's storytelling)
 const DEFAULT_VOICE_ID   = '21m00Tcm4TlvDq8ikWAM';
@@ -224,10 +225,8 @@ router.get('/voices', async (req, res) => {
       });
     }
 
-    const response = await axios.get(`${ELEVENLABS_API_URL}/voices`, {
-      headers: {
-        'xi-api-key': apiKey,
-      }
+    const response = await apiClient.get(`${ELEVENLABS_API_URL}/voices`, {
+      headers: { 'xi-api-key': apiKey }
     });
 
     // Filter for child-friendly voices
@@ -273,28 +272,51 @@ router.post('/generate', async (req, res) => {
       });
     }
 
-    const { text, ...options } = value;
+    const { text, saveToStorage, ...options } = value;
 
     console.log(`Generating audio for text: ${text.substring(0, 100)}...`);
 
     const audioResult = await generateAudioWithElevenLabs(text, options);
 
-    // Set headers for audio response
+    let audioUrl = null;
+    if (saveToStorage && Buffer.isBuffer(audioResult.audioData)) {
+      const uploadResult = await storageService.uploadAudio(
+        audioResult.audioData,
+        `tts-${Date.now()}.mp3`
+      );
+      audioUrl = uploadResult.url;
+    }
+
+    if (saveToStorage && audioUrl) {
+      return res.json({
+        success: true,
+        data: {
+          audioUrl,
+          contentType: audioResult.contentType,
+          size: audioResult.audioData.length
+        },
+        message: 'Audio generated and saved'
+      });
+    }
+
     res.set({
       'Content-Type': audioResult.contentType,
       'Content-Length': audioResult.audioData.length,
-      'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+      'Cache-Control': 'public, max-age=3600',
       'Access-Control-Allow-Origin': '*'
     });
-
     res.send(audioResult.audioData);
-
   } catch (error) {
     console.error('Error generating audio:', error);
+    const message = error.response?.data
+      ? (typeof error.response.data === 'string'
+          ? error.response.data
+          : error.response.data?.detail?.message || JSON.stringify(error.response.data))
+      : error.message;
     res.status(500).json({
       success: false,
       error: 'Failed to generate audio. Please try again.',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? message : undefined
     });
   }
 });
@@ -311,7 +333,7 @@ router.post('/stream', async (req, res) => {
       });
     }
 
-    const { text, ...options } = value;
+    const { text, saveToStorage, ...options } = value;
     const apiKey = process.env.ELEVENLABS_API_KEY;
 
     if (!apiKey) {
@@ -323,7 +345,6 @@ router.post('/stream', async (req, res) => {
 
     console.log(`Streaming audio for text: ${text.substring(0, 100)}...`);
 
-    // Set headers for streaming
     res.set({
       'Content-Type': 'audio/mpeg',
       'Transfer-Encoding': 'chunked',
@@ -331,11 +352,11 @@ router.post('/stream', async (req, res) => {
       'Access-Control-Allow-Origin': '*'
     });
 
-    // Make streaming request to ElevenLabs
+    const axios = require('axios');
     const response = await axios.post(
       `${ELEVENLABS_API_URL}/text-to-speech/${options.voiceId}/stream`,
       {
-        text: text,
+        text: String(text),
         model_id: options.modelId,
         voice_settings: {
           stability: options.stability,
@@ -346,24 +367,27 @@ router.post('/stream', async (req, res) => {
       },
       {
         headers: {
-          'Accept': 'audio/mpeg',
+          Accept: 'audio/mpeg',
           'Content-Type': 'application/json',
-          'xi-api-key': apiKey,
+          'xi-api-key': apiKey
         },
         responseType: 'stream'
       }
     );
 
-    // Pipe the response stream to the client
     response.data.pipe(res);
-
   } catch (error) {
     console.error('Error streaming audio:', error);
     if (!res.headersSent) {
+      const message = error.response?.data
+        ? (typeof error.response.data === 'string'
+            ? error.response.data
+            : error.response.data?.detail?.message || JSON.stringify(error.response.data))
+        : error.message;
       res.status(500).json({
         success: false,
         error: 'Failed to stream audio. Please try again.',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        details: process.env.NODE_ENV === 'development' ? message : undefined
       });
     }
   }

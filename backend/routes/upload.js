@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const { storageService } = require('../config/storage');
 const Joi = require('joi');
+const { authMiddleware } = require('../middleware/auth');
 
 // Configure multer for memory storage
 const storage = multer.memoryStorage();
@@ -25,6 +26,34 @@ const upload = multer({
   }
 });
 
+const pdfFilter = (req, file, cb) => {
+  if (file.mimetype === 'application/pdf') {
+    cb(null, true);
+  } else {
+    cb(new Error('Only PDF files are allowed'), false);
+  }
+};
+
+const audioFilter = (req, file, cb) => {
+  if (file.mimetype === 'audio/mpeg' || file.mimetype === 'audio/mp3' || file.mimetype.startsWith('audio/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only audio files are allowed'), false);
+  }
+};
+
+const uploadPdf = multer({
+  storage,
+  fileFilter: pdfFilter,
+  limits: { fileSize: 20 * 1024 * 1024, files: 1 }
+});
+
+const uploadAudio = multer({
+  storage,
+  fileFilter: audioFilter,
+  limits: { fileSize: 15 * 1024 * 1024, files: 1 }
+});
+
 // Validation schema for upload options
 const uploadOptionsSchema = Joi.object({
   maxWidth: Joi.number().integer().min(100).max(2000).default(1200),
@@ -33,8 +62,8 @@ const uploadOptionsSchema = Joi.object({
   format: Joi.string().valid('jpeg', 'png', 'webp').default('jpeg')
 });
 
-// POST /api/upload/image - Upload single image
-router.post('/image', upload.single('image'), async (req, res) => {
+// POST /api/upload/image - Upload single image (auth required)
+router.post('/image', authMiddleware, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -104,8 +133,52 @@ router.post('/image', upload.single('image'), async (req, res) => {
   }
 });
 
-// POST /api/upload/multiple - Upload multiple images
-router.post('/multiple', upload.array('images', 5), async (req, res) => {
+// POST /api/upload/pdf - Upload PDF (auth required)
+router.post('/pdf', authMiddleware, uploadPdf.single('pdf'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No PDF file provided. Use multipart field "pdf".' });
+    }
+    const uploadResult = await storageService.uploadPdf(req.file.buffer, req.file.originalname);
+    res.json({
+      success: true,
+      data: { url: uploadResult.url, key: uploadResult.key, originalName: req.file.originalname, size: req.file.size },
+      message: 'PDF uploaded successfully'
+    });
+  } catch (error) {
+    console.error('Error uploading PDF:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to upload PDF',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// POST /api/upload/audio - Upload audio (auth required)
+router.post('/audio', authMiddleware, uploadAudio.single('audio'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No audio file provided. Use multipart field "audio".' });
+    }
+    const uploadResult = await storageService.uploadAudio(req.file.buffer, req.file.originalname);
+    res.json({
+      success: true,
+      data: { url: uploadResult.url, key: uploadResult.key, originalName: req.file.originalname, size: req.file.size },
+      message: 'Audio uploaded successfully'
+    });
+  } catch (error) {
+    console.error('Error uploading audio:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to upload audio',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// POST /api/upload/multiple - Upload multiple images (auth required)
+router.post('/multiple', authMiddleware, upload.array('images', 5), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({
