@@ -7,14 +7,12 @@ import apiService from './apiService';
 export const generateStory = async (
   description,
   language = 'english',
-  translationLanguage = null,
   imageUrl = null
 ) => {
   try {
     const requestData = {
       description,
       language,
-      ...(translationLanguage && { translationLanguage }),
     };
 
     if (imageUrl) {
@@ -56,10 +54,7 @@ function getFallbackData(description, language) {
     pages: [{ text: fullText, imageUrl: null }],
     fullText,
     story: fullText,
-    translatedStory: null,
-    translatedPages: null,
     language,
-    translationLanguage: null,
     description,
     generatedAt: new Date().toISOString(),
     fallback: true

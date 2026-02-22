@@ -8,7 +8,6 @@ const { storageService } = require('../config/storage');
 const generateStorySchema = Joi.object({
   description: Joi.string().min(1).max(2000).required(),
   language: Joi.string().valid('english', 'spanish', 'french', 'chinese').default('english'),
-  translationLanguage: Joi.string().valid('english', 'spanish', 'french', 'chinese').optional().allow(null),
   imageUrl: Joi.string().max(10000000).optional().allow(null, ''),
   imageBase64: Joi.object({
     mimeType: Joi.string().optional(),
@@ -130,7 +129,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, error: error.details[0].message });
     }
 
-    const { description, language, translationLanguage, imageUrl, imageBase64 } = value;
+    const { description, language, imageUrl, imageBase64 } = value;
 
     let imageForParsing = imageBase64 || null;
     if (!imageForParsing && imageUrl) {
@@ -148,7 +147,6 @@ router.post('/', async (req, res) => {
 
     let pages = [];
     let fullText = '';
-    let translatedPages = null;
 
     try {
       let parsedJson = null;
@@ -188,16 +186,13 @@ router.post('/', async (req, res) => {
         console.warn('[generate-story] Title generation failed:', e.message);
       }
 
-      if (translationLanguage && translationLanguage !== language) {
-        try {
-          const translatedFull = await gemini.generateText(
-            prompts.getStoryFromDescriptionPrompt(description, translationLanguage)
-          );
-          const translatedArr = gemini.parseJsonFromText(translatedFull);
-          translatedPages = Array.isArray(translatedArr) ? translatedArr : [translatedFull];
-        } catch (e) {
-          console.warn('Translation failed:', e.message);
-        }
+      if (!generatedTitle && pages.length > 0) {
+        const firstPage = pages[0] || '';
+        const words = firstPage.split(/\s+/).slice(0, 8);
+        generatedTitle = words.join(' ').replace(/[.!?,;:]+$/, '');
+      }
+      if (!generatedSummary) {
+        generatedSummary = fullText.slice(0, 120).replace(/\s+\S*$/, '...');
       }
 
       res.json({
@@ -208,10 +203,7 @@ router.post('/', async (req, res) => {
           story: fullText,
           title: generatedTitle || null,
           summary: generatedSummary || null,
-          translatedStory: translatedPages ? translatedPages.join('\n\n') : null,
-          translatedPages: translatedPages || null,
           language,
-          translationLanguage: translationLanguage || null,
           description,
           generatedAt: new Date().toISOString()
         },
@@ -226,10 +218,7 @@ router.post('/', async (req, res) => {
           pages: [{ text: fallbackText, imageUrl: null }],
           fullText: fallbackText,
           story: fallbackText,
-          translatedStory: null,
-          translatedPages: null,
           language,
-          translationLanguage: null,
           description,
           generatedAt: new Date().toISOString(),
           fallback: true

@@ -45,7 +45,6 @@ const Loading = () => {
         const data = await generateStory(
           storyData.description,
           storyData.language,
-          storyData.translationLanguage,
           imageForApi
         );
 
@@ -56,11 +55,13 @@ const Loading = () => {
         const fullText = data.fullText || data.story || '';
         const pages = data.pages || [{ text: fullText, imageUrl: null }];
 
-        const autoTitle = storyData.description
-          ? storyData.description.charAt(0).toUpperCase() +
-            storyData.description.slice(1, 60).trim() +
-            (storyData.description.length > 60 ? '...' : '')
+        const firstPageText = pages[0]?.text || fullText;
+        const fallbackTitle = firstPageText
+          ? firstPageText.split(/\s+/).slice(0, 8).join(' ').replace(/[.!?,;:]+$/, '')
           : 'My Story';
+        const fallbackSummary = fullText
+          ? fullText.slice(0, 120).replace(/\s+\S*$/, '...')
+          : storyData.description;
 
         const completeStory = {
           ...storyData,
@@ -68,8 +69,8 @@ const Loading = () => {
           fullText,
           storyText: fullText,
           story: fullText,
-          title: data.title || storyData.title || autoTitle,
-          description: data.summary || storyData.description,
+          title: data.title || storyData.title || fallbackTitle,
+          description: data.summary || fallbackSummary,
           createdAt: storyData.createdAt || new Date().toISOString()
         };
 
@@ -85,7 +86,6 @@ const Loading = () => {
             description: completeStory.description,
             storyText: JSON.stringify({ version: 2, pages: pagesPayload }),
             language: completeStory.language,
-            translationLanguage: completeStory.translationLanguage || null,
             imageFileName: completeStory.imageFileName || null,
           };
           if (completeStory.imageUrl && !completeStory.imageUrl.startsWith('blob:') && !completeStory.imageUrl.startsWith('data:')) {

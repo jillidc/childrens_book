@@ -5,19 +5,19 @@ const axios = require('axios');
 
 // Rachel — warm, calm, soothing female voice (ideal for children's storytelling)
 const DEFAULT_VOICE_ID   = '21m00Tcm4TlvDq8ikWAM';
-// eleven_flash_v2_5 — ultra-low latency (~75 ms), good quality, fast warm-up
-const DEFAULT_MODEL_ID   = 'eleven_flash_v2_5';
+// eleven_v3 — most expressive model, ideal for storytelling and audiobook narration
+const DEFAULT_MODEL_ID   = 'eleven_v3';
 
 // Validation schema
 const textToSpeechSchema = Joi.object({
   text: Joi.string().min(1).max(10000).required(),
   voiceId: Joi.string().optional().default(DEFAULT_VOICE_ID),
   modelId: Joi.string().optional().default(DEFAULT_MODEL_ID),
-  stability: Joi.number().min(0).max(1).optional().default(0.65),
+  stability: Joi.number().min(0).max(1).optional().default(0.5),
   similarityBoost: Joi.number().min(0).max(1).optional().default(0.75),
-  style: Joi.number().min(0).max(1).optional().default(0.3),
+  style: Joi.number().min(0).max(1).optional().default(0.65),
   useSpeakerBoost: Joi.boolean().optional().default(true),
-  speed: Joi.number().min(0.7).max(1.2).optional().default(1.0)
+  speed: Joi.number().min(0.5).max(2.0).optional().default(1.0)
 });
 
 // ElevenLabs API configuration
@@ -33,9 +33,9 @@ const generateAudioWithElevenLabs = async (text, options = {}) => {
   const {
     voiceId = DEFAULT_VOICE_ID,
     modelId = DEFAULT_MODEL_ID,
-    stability = 0.65,
+    stability = 0.5,
     similarityBoost = 0.75,
-    style = 0.3,
+    style = 0.65,
     useSpeakerBoost = true,
     speed = 1.0
   } = options;
@@ -61,7 +61,7 @@ const generateAudioWithElevenLabs = async (text, options = {}) => {
           'xi-api-key': apiKey,
         },
         responseType: 'arraybuffer',
-        timeout: 60000
+        timeout: 90000
       }
     );
 
@@ -122,9 +122,9 @@ const generateAudioWithTimestamps = async (text, options = {}) => {
   const {
     voiceId = DEFAULT_VOICE_ID,
     modelId = DEFAULT_MODEL_ID,
-    stability = 0.65,
+    stability = 0.5,
     similarityBoost = 0.75,
-    style = 0.3,
+    style = 0.65,
     useSpeakerBoost = true,
     speed = 1.0
   } = options;
@@ -148,7 +148,7 @@ const generateAudioWithTimestamps = async (text, options = {}) => {
           'Content-Type': 'application/json',
           'xi-api-key': apiKey,
         },
-        timeout: 60000
+        timeout: 90000
       }
     );
 

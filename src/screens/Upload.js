@@ -31,7 +31,6 @@ const Upload = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const [description, setDescription] = useState('');
   const [language, setLanguage] = useState('english');
-  const [translationLanguage, setTranslationLanguage] = useState('');
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -67,7 +66,6 @@ const Upload = () => {
       const storyData = {
         description,
         language,
-        translationLanguage,
         imageUrl: remoteUrl || null,
         imageFileName: fileName || image.name,
         imagePreview: thumbnail || remoteUrl || null
@@ -153,20 +151,6 @@ const Upload = () => {
             </select>
           </div>
 
-          <div className="translation-select">
-            <label htmlFor="translation">Translate to (optional):</label>
-            <select
-              id="translation"
-              value={translationLanguage}
-              onChange={(e) => setTranslationLanguage(e.target.value)}
-            >
-              <option value="">No translation</option>
-              <option value="spanish">Spanish</option>
-              <option value="french">French</option>
-              <option value="english">English</option>
-              <option value="chinese">Chinese</option>
-            </select>
-          </div>
         </div>
 
         <button

@@ -69,9 +69,9 @@ const Story = () => {
   const totalSpreadsRef = useRef(1);
   const speakPageRef = useRef(null);
   const autoAdvanceRef = useRef(true);
+  const isPlayingRef = useRef(false);
+  const speedInitialRef = useRef(true);
   const navigate = useNavigate();
-
-  useEffect(() => { readingSpeedRef.current = readingSpeed; }, [readingSpeed]);
 
   const pages = useMemo(
     () => (storyData ? getPagesFromStory(storyData) : []),
@@ -82,6 +82,7 @@ const Story = () => {
   const leftIdx = currentSpread * 2;
   const rightIdx = currentSpread * 2 + 1;
 
+  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
   useEffect(() => { currentSpreadRef.current = currentSpread; }, [currentSpread]);
   useEffect(() => { pagesRef.current = pages; }, [pages]);
   useEffect(() => { totalSpreadsRef.current = totalSpreads; }, [totalSpreads]);
@@ -241,6 +242,22 @@ const Story = () => {
   }, [stopSpeech, speakWithSynthesis]);
 
   useEffect(() => { speakPageRef.current = speakPage; }, [speakPage]);
+
+  useEffect(() => {
+    readingSpeedRef.current = readingSpeed;
+    if (speedInitialRef.current) {
+      speedInitialRef.current = false;
+      return;
+    }
+    if (isPlayingRef.current && speakPageRef.current) {
+      const spread = currentSpreadRef.current;
+      const left = pagesRef.current[spread * 2]?.text || '';
+      const right = pagesRef.current[spread * 2 + 1]?.text || '';
+      const text = [left, right].filter(Boolean).join(' ');
+      if (text) speakPageRef.current(text);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readingSpeed]);
 
   const handlePlayPause = useCallback(() => {
     if (isPlaying || isLoadingAudio) {
@@ -412,10 +429,6 @@ const Story = () => {
             </button>
           </div>
         </div>
-
-        {storyData.language && (
-          <span className="language-tag">Language: {storyData.language}</span>
-        )}
 
         <span className="page-indicator">
           Page {leftIdx + 1}{rightIdx < pages.length ? `\u2013${rightIdx + 1}` : ''} of {pages.length}

@@ -2,8 +2,8 @@ import apiService from './apiService';
 
 // Rachel — warm, calm, soothing female voice, perfect for children's storytelling
 const DEFAULT_VOICE_ID = '21m00Tcm4TlvDq8ikWAM';
-// eleven_flash_v2_5 — ultra-low latency model for fast playback start
-const DEFAULT_MODEL_ID = 'eleven_flash_v2_5';
+// eleven_v3 — most expressive model, ideal for storytelling and audiobook narration
+const DEFAULT_MODEL_ID = 'eleven_v3';
 
 /**
  * Generate ElevenLabs audio with character-level timing for word highlighting.
@@ -18,9 +18,9 @@ export const generateWithTimestamps = async (text, options = {}) => {
       text,
       voiceId:         options.voiceId         || DEFAULT_VOICE_ID,
       modelId:         options.modelId         || DEFAULT_MODEL_ID,
-      stability:       options.stability        ?? 0.65,
+      stability:       options.stability        ?? 0.5,
       similarityBoost: options.similarityBoost  ?? 0.75,
-      style:           options.style            ?? 0.3,
+      style:           options.style            ?? 0.65,
       useSpeakerBoost: options.useSpeakerBoost  ?? true,
       speed:           clampSpeed(options.speed ?? 1.0)
     };
@@ -52,8 +52,8 @@ export const generateWithTimestamps = async (text, options = {}) => {
   }
 };
 
-/** ElevenLabs speed range is 0.7–1.2 */
-export const clampSpeed = (speed) => Math.min(1.2, Math.max(0.7, speed));
+/** ElevenLabs v3 speed range is 0.5–2.0 */
+export const clampSpeed = (speed) => Math.min(2.0, Math.max(0.5, speed));
 
 // ─── Legacy helpers kept for compatibility ────────────────────────────────────
 
@@ -62,9 +62,9 @@ export const playAudio = async (text, voiceId = DEFAULT_VOICE_ID) => {
     const audioBlob = await apiService.postBlob('/text-to-speech/generate', {
       text,
       voiceId,
-      stability: 0.65,
+      stability: 0.5,
       similarityBoost: 0.75,
-      style: 0.3,
+      style: 0.65,
       useSpeakerBoost: true
     });
     return URL.createObjectURL(audioBlob);
@@ -94,7 +94,7 @@ export const getAvailableVoices = async () => {
 export const streamAudio = async (text, voiceId = DEFAULT_VOICE_ID) => {
   try {
     const audioBlob = await apiService.postBlob('/text-to-speech/stream', {
-      text, voiceId, stability: 0.65, similarityBoost: 0.75, style: 0.3, useSpeakerBoost: true
+      text, voiceId, stability: 0.5, similarityBoost: 0.75, style: 0.65, useSpeakerBoost: true
     });
     return URL.createObjectURL(audioBlob);
   } catch (err) {
