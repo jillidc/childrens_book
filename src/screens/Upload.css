@@ -79,7 +79,7 @@
 
 .library-btn-img {
   height: 100px;
-  width: 100px;
+  width: 10000px;
   max-width: 60%;
 }
 
@@ -271,6 +271,7 @@
   position: relative;
   display: inline-flex;
   align-items: center;
+  font-family: 'Patrick Hand', 'Comic Sans MS', cursive, sans-serif;
   justify-content: center;
   background: none;
   border: none;
@@ -290,7 +291,8 @@
   position: absolute;
   color: #000051;
   font-family: inherit;
-  font-size: 1.55rem;
+  font-size: 1.9rem;
+  padding-bottom: 5px;
   font-weight: bold;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4);
   pointer-events: none;
