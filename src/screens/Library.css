@@ -109,11 +109,12 @@
 .create-first-btn-text {
   position: absolute;
   color: #000051;
-  font-family: inherit;
-  font-size: 2rem;
+  font-family: 'Patrick Hand', 'Comic Sans MS', cursive, sans-serif;
+  font-size: 2.4rem;
   font-weight: bold;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4);
   pointer-events: none;
+  padding-bottom: 5px;
 }
 
 .create-first-btn:hover {

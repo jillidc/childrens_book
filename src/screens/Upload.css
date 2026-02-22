@@ -43,7 +43,7 @@
 .library-btn-text {
   position: absolute;
   color: white;
-  font-size: 1.5rem;
+  font-size: 1.9rem;
   font-weight: bold;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
 }
@@ -253,11 +253,12 @@
 .generate-btn-text {
   position: absolute;
   color: #000051;
-  font-family: inherit;
-  font-size: 1.55rem;
+  font-family: 'Patrick Hand', 'Comic Sans MS', cursive, sans-serif;
+  font-size: 1.9rem;
   font-weight: bold;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4);
   pointer-events: none;
+  padding-bottom: 5px;
 }
 
 .generate-btn:hover:not(:disabled) {
