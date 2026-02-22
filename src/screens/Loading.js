@@ -4,17 +4,17 @@ import { generateStory } from '../services/geminiService';
 import storyService from '../services/storyService';
 import './Loading.css';
 
+const loadingMessages = [
+  "Creating your magical story...",
+  "Adding characters and adventures...",
+  "Sprinkling some magic dust...",
+  "Almost ready to read!"
+];
+
 const Loading = () => {
   const [loadingText, setLoadingText] = useState("Creating your magical story...");
   const [progress, setProgress] = useState(0);
   const navigate = useNavigate();
-
-  const loadingMessages = [
-    "Creating your magical story...",
-    "Adding characters and adventures...",
-    "Sprinkling some magic dust...",
-    "Almost ready to read!"
-  ];
 
   useEffect(() => {
     const generateUserStory = async () => {
@@ -74,6 +74,7 @@ const Loading = () => {
     };
 
     generateUserStory();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- loadingMessages is a module-level constant
   }, [navigate]);
 
   return (
