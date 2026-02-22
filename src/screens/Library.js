@@ -6,6 +6,7 @@ import bgImage from '../assets/Jillian-BG.png';
 import bookPjImage from '../assets/book-PJ.PNG';
 import createImg from '../assets/create.png';
 import cloudDrawBg from '../assets/blue-cloud-bg.png';
+import blue1Img from '../assets/blue-1.PNG';
 
 const Library = () => {
   const [stories, setStories] = useState([]);
@@ -97,7 +98,16 @@ const Library = () => {
         ) : (
           <div className="stories-grid">
             {stories.map((story, index) => (
-              <div key={index} className="story-card">
+              <div
+                key={index}
+                className="story-card"
+                style={{
+                  backgroundImage: `url(${cloudDrawBg})`,
+                  backgroundSize: '100% 100%',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat'
+                }}
+              >
                 <div className="story-image">
                   <img
                     src={story.imagePreview}
@@ -132,7 +142,8 @@ const Library = () => {
                       className="read-btn"
                       onClick={() => readStory(story)}
                     >
-                      📖 Read Story
+                      <img src={blue1Img} alt="" className="read-btn-img" />
+                      <span className="read-btn-text">Read Story</span>
                     </button>
 
                     <button
