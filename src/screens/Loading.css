@@ -116,9 +116,9 @@
   width: 200%;
   height: 100%;
   background-repeat: repeat-x;
-  background-size: 50% auto;
+  background-size: 100% auto;
   background-position: 0 center;
-  animation: scroll-clouds 60s linear infinite;
+  animation: scroll-clouds 80s linear infinite;
   pointer-events: none;
   z-index: 1;
   opacity: 0.6;
