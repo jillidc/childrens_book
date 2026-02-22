@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import storyService from '../services/storyService';
 import './Library.css';
+import bgImage from '../assets/Jillian-BG.png';
 
 const Library = () => {
   const [stories, setStories] = useState([]);
@@ -58,7 +59,7 @@ const Library = () => {
   };
 
   return (
-    <div className="library-screen">
+    <div className="library-screen" style={{ backgroundImage: `url(${bgImage})` }}>
       <div className="library-header">
         <button className="back-btn" onClick={goHome}>
           ← Back

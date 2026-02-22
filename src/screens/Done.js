@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Done.css';
+import cloudBg from '../assets/cloud-background.png';
 
 const Done = () => {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ const Done = () => {
   };
 
   return (
-    <div className="done-screen">
+    <div className="done-screen" style={{ backgroundImage: `url(${cloudBg})` }}>
       <div className="done-container">
         <div className="celebration">
           <div className="celebration-icon">🎉</div>
