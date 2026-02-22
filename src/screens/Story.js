@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { generateWithTimestamps, clampSpeed } from '../services/elevenLabsService';
 import openBook from '../assets/open-book.png';
 import './Story.css';
 import nightSky from '../assets/night-sky.png';
@@ -21,15 +20,7 @@ function getPagesFromStory(storyData) {
     if (parsed && parsed.version === 2 && Array.isArray(parsed.pages)) {
       return parsed.pages;
     }
-  } catch (_) {}
-  return { pages: null, fullText: raw || storyData.story || '' };
-}
-
-const SPEED_OPTIONS = [
-  { value: 0.8,  label: 'Slow'   },
-  { value: 1.0,  label: 'Medium' },
-  { value: 1.15, label: 'Fast'   },
-];
+  } catch (_) { /* not JSON, fall through */ }
 
   const sentences = raw.split(/(?<=[.!?])\s+/).filter(s => s.trim());
   const pages = [];
@@ -43,21 +34,6 @@ const Story = () => {
   const [storyData, setStoryData] = useState(null);
   const [currentSpread, setCurrentSpread] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
-  const [highlightRange, setHighlightRange] = useState({ start: null, end: null });
-  const [autoScroll, setAutoScroll] = useState(true);
-  const [readingSpeed, setReadingSpeed] = useState(1.0);
-
-  const audioRef      = useRef(null);   // HTMLAudioElement for ElevenLabs
-  const wordTimingsRef = useRef([]);     // word timing from ElevenLabs
-  const highlightRef  = useRef(null);
-  // Refs so closures in audio callbacks always see fresh state
-  const autoScrollRef       = useRef(autoScroll);
-  const pagesRef            = useRef(null);
-  const currentPageIndexRef = useRef(0);
-  const shouldAutoPlayRef   = useRef(false);
-  const readingSpeedRef     = useRef(readingSpeed);
-
   const [isFlipping, setIsFlipping] = useState(false);
   const [flipDirection, setFlipDirection] = useState('');
   const utteranceRef = useRef(null);
@@ -82,31 +58,13 @@ const Story = () => {
   }, [navigate]);
 
   useEffect(() => {
-    return () => { window.speechSynthesis.cancel(); };
+    return () => {
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    };
   }, []);
 
   const stopSpeech = useCallback(() => {
-    // Stop ElevenLabs audio
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    // Also cancel any fallback SpeechSynthesis
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-    wordTimingsRef.current = [];
-    shouldAutoPlayRef.current = false;
-    setIsPlaying(false);
-    setIsLoadingAudio(false);
-    setHighlightRange({ start: null, end: null });
-  }, []);
-
-  // SpeechSynthesis fallback — used only when ElevenLabs is unavailable
-  const speakWithSynthesis = useCallback((text) => {
-    if (!('speechSynthesis' in window)) return;
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate  = readingSpeedRef.current;
-    window.speechSynthesis.cancel();
     utteranceRef.current = null;
     setIsPlaying(false);
   }, []);
@@ -119,7 +77,7 @@ const Story = () => {
     utterance.rate = 0.85;
     utterance.pitch = 1.1;
 
-    const voices    = window.speechSynthesis.getVoices();
+    const voices = window.speechSynthesis.getVoices();
     const preferred = voices.find(v =>
       v.name.toLowerCase().includes('samantha') ||
       v.name.toLowerCase().includes('karen') ||
@@ -136,75 +94,10 @@ const Story = () => {
       setIsPlaying(false);
     };
 
+    utteranceRef.current = utterance;
     setIsPlaying(true);
     window.speechSynthesis.speak(utterance);
-  }, []);
-
-  const speakPage = useCallback(async (text) => {
-    stopSpeech();
-    if (!text) return;
-
-    setIsLoadingAudio(true);
-
-    try {
-      const result = await generateWithTimestamps(text, {
-        speed: clampSpeed(readingSpeedRef.current)
-      });
-
-      if (!result) {
-        // ElevenLabs unavailable — fall back silently
-        setIsLoadingAudio(false);
-        speakWithSynthesis(text);
-        return;
-      }
-
-      const { audioUrl, wordTimings } = result;
-      wordTimingsRef.current = wordTimings;
-
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-
-      audio.addEventListener('timeupdate', () => {
-        const t = audio.currentTime;
-        const timings = wordTimingsRef.current;
-        const hit = timings.find(w => t >= w.startTime && t <= w.endTime);
-        if (hit) {
-          setHighlightRange({ start: hit.charStart, end: hit.charEnd });
-        }
-      });
-
-      audio.onended = () => {
-        audioRef.current = null;
-        setIsPlaying(false);
-        setHighlightRange({ start: null, end: null });
-        // Revoke object URL to free memory
-        URL.revokeObjectURL(audioUrl);
-        if (autoScrollRef.current && pagesRef.current) {
-          const nextIdx = currentPageIndexRef.current + 1;
-          if (nextIdx < pagesRef.current.length) {
-            shouldAutoPlayRef.current = true;
-            setCurrentPageIndex(nextIdx);
-          }
-        }
-      };
-
-      audio.onerror = () => {
-        audioRef.current = null;
-        setIsPlaying(false);
-        setIsLoadingAudio(false);
-        setHighlightRange({ start: null, end: null });
-      };
-
-      setIsLoadingAudio(false);
-      setIsPlaying(true);
-      await audio.play();
-
-    } catch (err) {
-      console.error('speakPage error:', err);
-      setIsLoadingAudio(false);
-      speakWithSynthesis(text);
-    }
-  }, [stopSpeech, speakWithSynthesis]);
+  }, [stopSpeech]);
 
   const handlePlayPause = useCallback(() => {
     if (isPlaying) {
@@ -249,7 +142,7 @@ const Story = () => {
     return <div className="loading">Loading story...</div>;
   }
 
-   const leftPage = pages[leftIdx];
+  const leftPage = pages[leftIdx];
   const rightPage = pages[rightIdx];
   const leftImage = leftPage?.imageUrl || (currentSpread === 0 ? (storyData.imagePreview || storyData.imageUrl) : null);
   const rightImage = rightPage?.imageUrl || null;
@@ -258,46 +151,11 @@ const Story = () => {
     <div className="story-screen" style={{ backgroundImage: `url(${nightSky})` }}>
       <div className="scrolling-clouds" style={{ backgroundImage: `url(${cloudsPng})` }} />
       <div className="story-header">
-        <button className="back-btn" onClick={goBack}>← Back</button>
+        <button className="back-btn" onClick={goBack}>&larr; Back</button>
         <h1>Your Story</h1>
-        <button className="done-btn" onClick={goToDone}>Done ✓</button>
+        <button className="done-btn" onClick={goToDone}>Done &check;</button>
       </div>
 
-      <div className="story-container">
-        {/* ── Text ── word highlight works on every page/paragraph ── */}
-        <div className="story-text-block">
-          <div className="story-paragraphs">
-            {(() => {
-              // Build paragraph list with cumulative offsets so charIndex
-              // (which counts across the whole currentPageText string) maps
-              // correctly to the right paragraph.
-              const paras = currentPageText.split('\n').filter(p => p.trim());
-              let offset = 0;
-              return paras.map((para, i) => {
-                const paraStart = currentPageText.indexOf(para.trim(), offset);
-                const paraEnd   = paraStart + para.trim().length;
-                offset = paraEnd;
-
-                const hlStart = highlightRange.start;
-                const hlEnd   = highlightRange.end;
-                const inThisPara =
-                  hlStart != null &&
-                  hlEnd   != null &&
-                  hlStart >= paraStart &&
-                  hlStart <  paraEnd;
-
-                return (
-                  <p key={i} className="story-paragraph">
-                    <HighlightedText
-                      text={para.trim()}
-                      charStart={inThisPara ? hlStart - paraStart : null}
-                      charEnd={inThisPara ? hlEnd   - paraStart : null}
-                      highlightRef={inThisPara ? highlightRef : null}
-                    />
-                  </p>
-                );
-              });
-            })()}
       <div className="book-wrapper">
         <img src={openBook} alt="Book frame" className="book-frame" />
 
@@ -316,18 +174,6 @@ const Story = () => {
             </div>
           </div>
 
-        {/* ── Image below text ── only show AI-generated images; placeholder otherwise */}
-        <div className="story-image-block">
-          {currentImage ? (
-            <img
-              src={currentImage}
-              alt={`Page ${currentPageIndex + 1} illustration`}
-              className="page-illustration"
-            />
-          ) : (
-            <div className="story-image-placeholder">
-              <span className="placeholder-text">📖</span>
-              <span className="placeholder-label">Illustration generating…</span>
           <div className={`book-page right-page ${isFlipping && flipDirection === 'forward' ? 'flip-forward' : ''}`}>
             <div className="page-content">
               {rightPage ? (
@@ -359,7 +205,7 @@ const Story = () => {
           onClick={handlePlayPause}
           disabled={pages.length === 0}
         >
-          {isPlaying ? <>&#9208;&#65039; Pause Story</> : <>&#128266; Read Story Aloud</>}
+          {isPlaying ? <>&nbsp;&#9208;&#65039; Pause Story</> : <>&nbsp;&#128266; Read Story Aloud</>}
         </button>
 
         {storyData.language && (
@@ -367,7 +213,7 @@ const Story = () => {
         )}
 
         <span className="page-indicator">
-          Page {leftIdx + 1}{rightIdx < pages.length ? `–${rightIdx + 1}` : ''} of {pages.length}
+          Page {leftIdx + 1}{rightIdx < pages.length ? `\u2013${rightIdx + 1}` : ''} of {pages.length}
         </span>
       </div>
     </div>

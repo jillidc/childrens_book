@@ -83,9 +83,7 @@
   overflow: hidden;
   display: flex;
   align-items: stretch;
-  background-image: url('../assets/page-texture.png');
-  background-size: cover;
-  background-position: center;
+  background: #faf6ef;
 }
 
 .left-page {
@@ -399,14 +397,6 @@
   .page-text {
     font-size: 0.8rem;
     line-height: 1.5;
-  }
-
-  .story-text-block {
-    padding: 28px 24px 20px;
-  }
-
-  .story-image-block {
-    padding: 0 24px 24px;
   }
 
   .story-controls {
