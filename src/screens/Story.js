@@ -289,7 +289,6 @@ const Story = () => {
   const leftImage = leftPage?.imageUrl || (currentSpread === 0 ? (storyData.imagePreview || storyData.imageUrl) : null);
   const rightImage = rightPage?.imageUrl || null;
 
-  const spreadText = [leftPage?.text, rightPage?.text].filter(Boolean).join(' ');
   const leftLen = leftPage?.text?.length || 0;
 
   const leftHlStart = highlightRange.start != null && highlightRange.start < leftLen
