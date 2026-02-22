@@ -28,9 +28,12 @@
 }
 
 .celebration-icon {
-  font-size: 4rem;
   margin-bottom: 20px;
-  animation: bounce 2s ease-in-out infinite;
+}
+
+.celebration-img {
+  width: 150px;
+  height: auto;
 }
 
 .celebration h1 {
@@ -145,6 +148,20 @@
 }
 
 .fun-fact:hover .fact-drawing-img {
+  transform: scale(1.08);
+}
+
+.fact-stars-img {
+  display: inline-block;
+  width: 28px;
+  height: auto;
+  object-fit: contain;
+  vertical-align: middle;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.12));
+  transition: transform 0.3s ease;
+}
+
+.fun-fact:hover .fact-stars-img {
   transform: scale(1.08);
 }
 

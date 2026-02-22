@@ -6,6 +6,7 @@ import bgImage from '../assets/Jillian-BG.png';
 import libraryIcon from '../assets/bluescribble.png';
 import drawingImg from '../assets/drawing.PNG';
 import cloudDrawBg from '../assets/blue-cloud-bg.png';
+import createImg from '../assets/create.png';
 
 function createThumbnail(dataUrl, maxSize = 200) {
   return new Promise((resolve) => {
@@ -92,7 +93,7 @@ const Upload = () => {
         className="upload-container"
         style={{
           backgroundImage: `url(${cloudDrawBg})`,
-          backgroundSize: '96%',
+          backgroundSize: '100% 100%',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat'
         }}
@@ -166,7 +167,8 @@ const Upload = () => {
           onClick={handleSubmit}
           disabled={!image || !description.trim()}
         >
-          Create My Story
+          <img src={createImg} alt="" className="generate-btn-img" />
+          <span className="generate-btn-text">Create My Story</span>
         </button>
       </div>
 
