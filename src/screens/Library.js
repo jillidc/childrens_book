@@ -5,6 +5,9 @@ import storyService from '../services/storyService';
 import './Library.css';
 import bgImage from '../assets/Jillian-BG.png';
 import bookPjImage from '../assets/book-PJ.PNG';
+import createImg from '../assets/create.png';
+import cloudDrawBg from '../assets/blue-cloud-bg.png';
+import blue1Img from '../assets/blue-1.PNG';
 
 const Library = () => {
   const [stories, setStories] = useState([]);
@@ -75,20 +78,38 @@ const Library = () => {
 
       <div className="library-container">
         {stories.length === 0 ? (
-          <div className="empty-library">
+          <div
+            className="empty-library"
+            style={{
+              backgroundImage: `url(${cloudDrawBg})`,
+              backgroundSize: '96%',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }}
+          >
             <div className="empty-icon">
               <img src={bookPjImage} alt="Books" className="empty-library-book-img" />
             </div>
             <h2>No stories yet!</h2>
-            <p>Create your first story to see it here.</p>
+            <p>Create your first story to see it here</p>
             <button className="create-first-btn" onClick={goHome}>
-              Create My First Story
+              <img src={createImg} alt="" className="create-first-btn-img" />
+              <span className="create-first-btn-text">Create My First Story</span>
             </button>
           </div>
         ) : (
           <div className="stories-grid">
             {stories.map((story, index) => (
-              <div key={index} className="story-card">
+              <div
+                key={index}
+                className="story-card"
+                style={{
+                  backgroundImage: `url(${cloudDrawBg})`,
+                  backgroundSize: '100% 100%',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat'
+                }}
+              >
                 <div className="story-image">
                   {(story.imagePreview || story.imageUrl) ? (
                     <img
@@ -127,7 +148,8 @@ const Library = () => {
                       className="read-btn"
                       onClick={() => readStory(story)}
                     >
-                      📖 Read Story
+                      <img src={blue1Img} alt="" className="read-btn-img" />
+                      <span className="read-btn-text">Read Story</span>
                     </button>
 
                     <button
