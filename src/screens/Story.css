@@ -4,7 +4,7 @@
 
 .story-screen {
   min-height: 100vh;
-  padding: 20px;
+  padding: 8px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -21,7 +21,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 0;
   width: 100%;
   max-width: 1000px;
   position: relative;
@@ -58,7 +58,7 @@
   z-index: 2;
   width: 100%;
   max-width: 1200px;
-  margin: 0 auto;
+  margin: 0;
 }
 
 .book-frame {
@@ -132,7 +132,7 @@
   max-height: 45%;
   object-fit: contain;
   border-radius: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 0;
 }
 
 .page-number {
@@ -140,7 +140,7 @@
   text-align: center;
   font-size: 1.2rem;
   color: #999;
-  margin-top: auto;
+  margin-top: 0;
   padding-top: 8px;
 }
 
@@ -213,7 +213,7 @@
 
 /* Controls below the book */
 .story-controls {
-  margin-top: 20px;
+  margin-top: -60px;
   display: flex;
   align-items: center;
   gap: 15px;
@@ -221,29 +221,34 @@
   justify-content: center;
   position: relative;
   z-index: 2;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: center;
+  padding: 20px 40px;
+  min-height: 150px;
+  width: 1000px;
 }
 
 .play-btn {
-  background: linear-gradient(135deg, #48c78e, #06d6a0);
-  color: white;
+  background: url('../assets/blue-cloud-bg.png') center / 140% 140% no-repeat;
+  color: #000051;
   border: none;
   /* Fixed dimensions so the button never reflows when the label changes */
-  min-width: 210px;
-  padding: 14px 24px;
-  font-size: 1.1rem;
+  min-width: 160px;
+  padding: 8px 16px;
+  font-size: 1.5rem;
+  font-family: 'Patrick Hand', 'Comic Sans MS', cursive, sans-serif;
   font-weight: bold;
-  border-radius: 28px;
+  border-radius: 20px;
   cursor: pointer;
-  transition: background 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
-  align-self: flex-start;
-  box-shadow: 0 5px 16px rgba(6, 214, 160, 0.38);
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
   text-align: center;
   white-space: nowrap;
+  margin-top: 12px;
 }
 
 .play-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(6, 214, 160, 0.55);
 }
 
 .play-btn:disabled {
@@ -286,8 +291,9 @@
 .setting-label {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #555;
+  color: white;
   min-width: 72px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .setting-value {
@@ -381,7 +387,7 @@
 
 /* ── Language tag ── */
 .story-info {
-  margin-top: 4px;
+  margin-top: 0;
 }
 
 .language-tag {

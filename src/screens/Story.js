@@ -5,6 +5,7 @@ import openBook from '../assets/open-book.png';
 import './Story.css';
 import nightSky from '../assets/night-sky.png';
 import cloudsPng from '../assets/clouds.png';
+import blueScribble from '../assets/bluescribble.png';
 
 function getPagesFromStory(storyData) {
   if (storyData.pages && Array.isArray(storyData.pages) && storyData.pages.length > 0) {
@@ -257,8 +258,8 @@ const Story = () => {
   const playBtnLabel = isLoadingAudio
     ? 'Loading...'
     : isPlaying
-      ? <>&nbsp;&#9208;&#65039; Pause Story</>
-      : <>&nbsp;&#128266; Read Story Aloud</>;
+      ? <>Pause Story</>
+      : <>Read Story Aloud</>;
 
   return (
     <div className="story-screen" style={{ backgroundImage: `url(${nightSky})` }}>
@@ -324,7 +325,7 @@ const Story = () => {
         )}
       </div>
 
-      <div className="story-controls">
+      <div className="story-controls" style={{ backgroundImage: `url(${blueScribble})` }}>
         <button
           className={playBtnClass}
           onClick={handlePlayPause}
