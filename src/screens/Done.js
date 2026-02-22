@@ -1,6 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Done.css';
+import nightSky from '../assets/night-sky.png';
+import cloudsPng from '../assets/clouds.png';
+import drawingImg from '../assets/drawing.PNG';
 
 const Done = () => {
   const navigate = useNavigate();
@@ -19,7 +22,8 @@ const Done = () => {
   };
 
   return (
-    <div className="done-screen">
+    <div className="done-screen" style={{ backgroundImage: `url(${nightSky})` }}>
+      <div className="scrolling-clouds" style={{ backgroundImage: `url(${cloudsPng})` }} />
       <div className="done-container">
         <div className="celebration">
           <div className="celebration-icon">🎉</div>
@@ -47,7 +51,7 @@ const Done = () => {
             <p>Every story you create is unique and special!</p>
           </div>
           <div className="fun-fact">
-            <span className="fact-icon">🎨</span>
+            <span className="fact-icon"><img src={drawingImg} alt="" className="fact-drawing-img" /></span>
             <p>Your imagination brought this story to life!</p>
           </div>
         </div>

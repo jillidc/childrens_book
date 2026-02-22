@@ -3,6 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { generateStory } from '../services/geminiService';
 import storyService from '../services/storyService';
 import './Loading.css';
+import nightSky from '../assets/night-sky.png';
+import cloudsPng from '../assets/clouds.png';
+
+const loadingMessages = [
+  "Creating your magical story...",
+  "Adding characters and adventures...",
+  "Sprinkling some magic dust...",
+  "Almost ready to read!"
+];
 
 const loadingMessages = [
   "Creating your magical story...",
@@ -12,7 +21,7 @@ const loadingMessages = [
 ];
 
 const Loading = () => {
-  const [loadingText, setLoadingText] = useState("Creating your magical story...");
+  const [loadingText, setLoadingText] = useState(loadingMessages[0]);
   const [progress, setProgress] = useState(0);
   const navigate = useNavigate();
 
@@ -109,7 +118,8 @@ const Loading = () => {
   }, [navigate]);
 
   return (
-    <div className="loading-screen">
+    <div className="loading-screen" style={{ backgroundImage: `url(${nightSky})` }}>
+      <div className="scrolling-clouds" style={{ backgroundImage: `url(${cloudsPng})` }} />
       <div className="loading-container">
         <div className="loading-animation">
           <div className="magic-wand">🪄</div>

@@ -1,7 +1,10 @@
 .library-screen {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: #667eea;
 }
 
 .library-header {
@@ -53,6 +56,23 @@
   font-size: 4rem;
   margin-bottom: 20px;
   opacity: 0.7;
+}
+
+/* Book PJ image - empty library illustration */
+.empty-library-book-img {
+  display: block;
+  width: 140px;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  object-position: center;
+  margin: 0 auto;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.15));
+  transition: transform 0.3s ease;
+}
+
+.empty-library:hover .empty-library-book-img {
+  transform: scale(1.05);
 }
 
 .empty-library h2 {
@@ -217,5 +237,9 @@
 
   .empty-library {
     padding: 40px 20px;
+  }
+
+  .empty-library-book-img {
+    width: 100px;
   }
 }
