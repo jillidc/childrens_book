@@ -10,6 +10,26 @@ const PORT = process.env.PORT || 5000;
 // Security middleware
 app.use(helmet());
 
+// CORS first so preflight and all responses get Access-Control-* headers
+// FRONTEND_URL (comma-separated) + any *.vercel.app so preview deploys work
+const frontendUrls = (process.env.FRONTEND_URL || 'http://localhost:3000')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (frontendUrls.includes(origin)) return callback(null, true);
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
+    callback(null, false);
+  },
+  credentials: true,
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+app.use(cors(corsOptions));
+
 // Rate limiting — JSON responses so the frontend can parse them
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -29,23 +49,6 @@ function makeStrictLimiter(max) {
 const storyGenLimiter = makeStrictLimiter(15);
 const ttsLimiter      = makeStrictLimiter(60);
 const aiLimiter       = makeStrictLimiter(20);
-
-// CORS — FRONTEND_URL (comma-separated) + any *.vercel.app so preview deploys work
-const frontendUrls = (process.env.FRONTEND_URL || 'http://localhost:3000')
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean);
-const corsOptions = {
-  origin(origin, callback) {
-    if (!origin) return callback(null, true); // same-origin or non-browser
-    if (frontendUrls.includes(origin)) return callback(null, true);
-    if (origin.endsWith('.vercel.app')) return callback(null, true);
-    callback(null, false);
-  },
-  credentials: true,
-  optionsSuccessStatus: 200
-};
-app.use(cors(corsOptions));
 
 // Body parsing middleware
 app.use(express.json({ limit: '50mb' }));
