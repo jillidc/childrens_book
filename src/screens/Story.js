@@ -266,7 +266,7 @@ const Story = () => {
       <div className="story-header">
         <button className="back-btn" onClick={goBack}>&larr; Back</button>
         <h1>Your Story</h1>
-        <button className="done-btn" onClick={goToDone}>Done &check;</button>
+        <button className="done-btn" onClick={goToDone}>Done</button>
       </div>
 
       <div className="book-wrapper">
