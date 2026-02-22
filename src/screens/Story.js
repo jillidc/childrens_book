@@ -336,7 +336,7 @@ const Story = () => {
 
         <div className="narrator-settings">
           <div className="setting-item">
-            <span className="setting-label">Speed</span>
+            <span className="setting-label">Speed:</span>
             <div className="speed-btn-group">
               {SPEED_OPTIONS.map(opt => (
                 <button
