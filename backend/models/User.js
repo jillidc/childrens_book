@@ -4,24 +4,24 @@ const { v4: uuidv4 } = require('uuid');
 class User {
   constructor(data) {
     this.id = data.id || uuidv4();
-    this.walletAddress = data.walletAddress || null;
     this.username = data.username || null;
     this.email = data.email || null;
+    this.passwordHash = data.passwordHash || null;
     this.createdAt = data.createdAt || new Date();
     this.updatedAt = data.updatedAt || new Date();
   }
 
   async save() {
     const query = `
-      INSERT INTO users (id, wallet_address, username, email, created_at, updated_at)
+      INSERT INTO users (id, username, email, password_hash, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
       this.id,
-      this.walletAddress,
       this.username,
       this.email,
+      this.passwordHash,
       this.createdAt,
       this.updatedAt
     ];
@@ -40,11 +40,11 @@ class User {
 
     const query = `
       UPDATE users
-      SET username = ?, email = ?, updated_at = ?
+      SET username = ?, email = ?, password_hash = ?, updated_at = ?
       WHERE id = ?
     `;
 
-    const values = [this.username, this.email, this.updatedAt, this.id];
+    const values = [this.username, this.email, this.passwordHash, this.updatedAt, this.id];
 
     try {
       await db.execute(query, values);
@@ -63,9 +63,9 @@ class User {
       if (rows && rows.length > 0) {
         return new User({
           id: rows[0].ID,
-          walletAddress: rows[0].WALLET_ADDRESS,
           username: rows[0].USERNAME,
           email: rows[0].EMAIL,
+          passwordHash: rows[0].PASSWORD_HASH,
           createdAt: rows[0].CREATED_AT,
           updatedAt: rows[0].UPDATED_AT
         });
@@ -77,40 +77,24 @@ class User {
     }
   }
 
-  static async findByWalletAddress(walletAddress) {
-    const query = 'SELECT * FROM users WHERE wallet_address = ?';
-
+  static async findByEmail(email) {
+    if (!email) return null;
+    const query = 'SELECT * FROM users WHERE email = ?';
     try {
-      const rows = await db.execute(query, [walletAddress]);
+      const rows = await db.execute(query, [email]);
       if (rows && rows.length > 0) {
         return new User({
           id: rows[0].ID,
-          walletAddress: rows[0].WALLET_ADDRESS,
           username: rows[0].USERNAME,
           email: rows[0].EMAIL,
+          passwordHash: rows[0].PASSWORD_HASH,
           createdAt: rows[0].CREATED_AT,
           updatedAt: rows[0].UPDATED_AT
         });
       }
       return null;
     } catch (error) {
-      console.error('Error finding user by wallet:', error);
-      throw error;
-    }
-  }
-
-  static async findOrCreateByWallet(walletAddress) {
-    try {
-      let user = await User.findByWalletAddress(walletAddress);
-
-      if (!user) {
-        user = new User({ walletAddress });
-        await user.save();
-      }
-
-      return user;
-    } catch (error) {
-      console.error('Error finding or creating user:', error);
+      console.error('Error finding user by email:', error);
       throw error;
     }
   }
@@ -130,7 +114,6 @@ class User {
   toJSON() {
     return {
       id: this.id,
-      walletAddress: this.walletAddress,
       username: this.username,
       email: this.email,
       createdAt: this.createdAt,
