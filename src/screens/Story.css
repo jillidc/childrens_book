@@ -1,7 +1,13 @@
 .story-screen {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: #b3d9ff;
 }
 
 .story-header {
@@ -9,9 +15,8 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  max-width: 1200px;
-  margin-left: auto;
-  margin-right: auto;
+  width: 100%;
+  max-width: 1000px;
 }
 
 .back-btn, .done-btn {
@@ -36,85 +41,186 @@
   text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
 }
 
-.story-container {
+/* Book wrapper: positions everything relative to the book frame */
+.book-wrapper {
+  position: relative;
+  width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  background: white;
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  min-height: 70vh;
 }
 
-.story-image {
-  padding: 30px;
+.book-frame {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Pages sit on top of the book frame */
+.book-pages {
+  position: absolute;
+  top: 22%;
+  left: 7%;
+  right: 7%;
+  bottom: 25%;
+  display: flex;
+  gap: 4%;
+}
+
+.book-page {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  align-items: stretch;
+  background-image: url('../assets/page-texture.png');
+  background-size: cover;
+  background-position: center;
+}
+
+.left-page {
+  border-radius: 20px 0 0 20px;
+}
+
+.right-page {
+  border-radius: 0 20px 20px 0;
+}
+
+.page-content {
+  width: 100%;
+  padding: 8% 6%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Page text styling to look like a storybook */
+.page-text {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 1.3rem;
+  line-height: 1.8;
+  color: #3a2e1e;
+  text-align: center;
+  margin: 0;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f8f9ff;
 }
 
-.drawing-image {
-  max-width: 100%;
-  max-height: 400px;
-  border-radius: 15px;
-  object-fit: cover;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-}
-
-.story-content {
-  padding: 30px;
+.end-text {
   display: flex;
-  flex-direction: column;
-}
-
-.story-text {
-  flex: 1;
-  margin-bottom: 30px;
-}
-
-.story-paragraphs {
-  font-size: 1.2rem;
-  line-height: 1.8;
-  color: #333;
-}
-
-.story-paragraph {
-  margin-bottom: 20px;
-  text-align: left;
-}
-
-.story-paragraph:first-child {
-  font-size: 1.3rem;
-  font-weight: bold;
-  color: #667eea;
-}
-
-.no-story {
-  color: #999;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
   font-style: italic;
-  text-align: center;
-  padding: 40px;
+  color: #667eea;
+  font-weight: bold;
 }
 
+.page-drawing {
+  width: 100%;
+  max-height: 45%;
+  object-fit: contain;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.page-number {
+  display: block;
+  text-align: center;
+  font-size: 1.2rem;
+  color: #999;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+/* Page flip animations */
+.book-page.flip-forward {
+  animation: flipForward 0.5s ease-in-out;
+}
+
+.book-page.flip-backward {
+  animation: flipBackward 0.5s ease-in-out;
+}
+
+@keyframes flipForward {
+  0% {
+    transform: perspective(1200px) rotateY(0deg);
+    transform-origin: left center;
+  }
+  100% {
+    transform: perspective(1200px) rotateY(-90deg);
+    transform-origin: left center;
+  }
+}
+
+@keyframes flipBackward {
+  0% {
+    transform: perspective(1200px) rotateY(0deg);
+    transform-origin: right center;
+  }
+  100% {
+    transform: perspective(1200px) rotateY(90deg);
+    transform-origin: right center;
+  }
+}
+
+/* Navigation arrows */
+.page-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.8);
+  border: none;
+  font-size: 2.5rem;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  color: #667eea;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  line-height: 1;
+  padding-bottom: 4px;
+}
+
+.page-nav:hover {
+  background: white;
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.prev-page {
+  left: -25px;
+}
+
+.next-page {
+  right: -25px;
+}
+
+/* Controls below the book */
 .story-controls {
-  border-top: 2px solid #f0f0f0;
-  padding-top: 20px;
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .play-btn {
   background: linear-gradient(135deg, #48c78e, #06d6a0);
   color: white;
   border: none;
-  padding: 15px 30px;
-  font-size: 1.1rem;
+  padding: 12px 25px;
+  font-size: 1rem;
   font-weight: bold;
   border-radius: 25px;
   cursor: pointer;
   transition: all 0.3s ease;
-  margin-bottom: 15px;
   box-shadow: 0 5px 15px rgba(6, 214, 160, 0.4);
 }
 
@@ -133,26 +239,27 @@
   background: linear-gradient(135deg, #ff6b6b, #ee5a24);
 }
 
-.story-info {
-  margin-top: 15px;
-}
-
 .language-tag {
-  background: #f0f0f0;
-  color: #666;
+  background: rgba(255,255,255,0.2);
+  color: white;
   padding: 5px 12px;
   border-radius: 15px;
   font-size: 0.9rem;
-  display: inline-block;
+}
+
+.page-indicator {
+  color: rgba(255,255,255,0.8);
+  font-size: 0.9rem;
 }
 
 @media (max-width: 768px) {
-  .story-container {
-    grid-template-columns: 1fr;
+  .book-wrapper {
+    max-width: 100%;
   }
 
-  .story-image {
-    padding: 20px;
+  .page-text {
+    font-size: 0.8rem;
+    line-height: 1.5;
   }
 
   .story-header h1 {
@@ -162,5 +269,19 @@
   .back-btn, .done-btn {
     padding: 8px 15px;
     font-size: 0.9rem;
+  }
+
+  .page-nav {
+    width: 35px;
+    height: 35px;
+    font-size: 1.8rem;
+  }
+
+  .prev-page {
+    left: -10px;
+  }
+
+  .next-page {
+    right: -10px;
   }
 }

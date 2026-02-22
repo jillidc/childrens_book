@@ -4,17 +4,17 @@ import { generateStory } from '../services/geminiService';
 import storyService from '../services/storyService';
 import './Loading.css';
 
+const loadingMessages = [
+  "Creating your magical story...",
+  "Adding characters and adventures...",
+  "Sprinkling some magic dust...",
+  "Almost ready to read!"
+];
+
 const Loading = () => {
-  const [loadingText, setLoadingText] = useState("Creating your magical story...");
+  const [loadingText, setLoadingText] = useState(loadingMessages[0]);
   const [progress, setProgress] = useState(0);
   const navigate = useNavigate();
-
-  const loadingMessages = [
-    "Creating your magical story...",
-    "Adding characters and adventures...",
-    "Sprinkling some magic dust...",
-    "Almost ready to read!"
-  ];
 
   useEffect(() => {
     const generateUserStory = async () => {

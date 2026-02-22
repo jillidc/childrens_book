@@ -1,12 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { playAudio } from '../services/elevenLabsService';
+import openBook from '../assets/open-book.png';
 import './Story.css';
+import cloudBackground from '../assets/cloud-background.png';
+
+const splitIntoPages = (text) => {
+  if (!text) return [];
+  return text
+    .split(/(?<=[.!?])\s+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+};
 
 const Story = () => {
   const [storyData, setStoryData] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentAudio, setCurrentAudio] = useState(null);
+  const [currentSpread, setCurrentSpread] = useState(0);
+  const [isFlipping, setIsFlipping] = useState(false);
+  const [flipDirection, setFlipDirection] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -25,8 +38,38 @@ const Story = () => {
     };
   }, [navigate, currentAudio]);
 
+  const storyText = storyData?.story || storyData?.storyText || '';
+  const pages = useMemo(() => splitIntoPages(storyText), [storyText]);
+
+  const totalSpreads = Math.ceil(pages.length / 2);
+  const leftPageIndex = currentSpread * 2;
+  const rightPageIndex = currentSpread * 2 + 1;
+
+  const goToNextSpread = () => {
+    if (currentSpread < totalSpreads - 1 && !isFlipping) {
+      setFlipDirection('forward');
+      setIsFlipping(true);
+      setTimeout(() => {
+        setCurrentSpread(prev => prev + 1);
+        setIsFlipping(false);
+        setFlipDirection('');
+      }, 500);
+    }
+  };
+
+  const goToPrevSpread = () => {
+    if (currentSpread > 0 && !isFlipping) {
+      setFlipDirection('backward');
+      setIsFlipping(true);
+      setTimeout(() => {
+        setCurrentSpread(prev => prev - 1);
+        setIsFlipping(false);
+        setFlipDirection('');
+      }, 500);
+    }
+  };
+
   const handlePlayStory = async () => {
-    const storyText = storyData?.story || storyData?.storyText;
     if (!storyText) return;
 
     if (isPlaying && currentAudio) {
@@ -40,9 +83,7 @@ const Story = () => {
       setIsPlaying(true);
       const audioUrl = await playAudio(storyText);
 
-      // Handle both regular audio URLs and speech synthesis
       if (audioUrl === 'speech-synthesis://mock-audio-url') {
-        // Browser speech synthesis fallback
         setIsPlaying(false);
         return;
       }
@@ -69,16 +110,12 @@ const Story = () => {
   };
 
   const goToDone = () => {
-    if (currentAudio) {
-      currentAudio.pause();
-    }
+    if (currentAudio) currentAudio.pause();
     navigate('/done');
   };
 
   const goBack = () => {
-    if (currentAudio) {
-      currentAudio.pause();
-    }
+    if (currentAudio) currentAudio.pause();
     navigate('/upload');
   };
 
@@ -87,7 +124,7 @@ const Story = () => {
   }
 
   return (
-    <div className="story-screen">
+    <div className="story-screen" style={{ backgroundImage: `url(${cloudBackground})` }}>
       <div className="story-header">
         <button className="back-btn" onClick={goBack}>
           ← Back
@@ -98,54 +135,76 @@ const Story = () => {
         </button>
       </div>
 
-      <div className="story-container">
-        <div className="story-image">
-          <img
-            src={storyData.imagePreview}
-            alt="Your drawing"
-            className="drawing-image"
-          />
-        </div>
+      <div className="book-wrapper">
+        <img src={openBook} alt="Book frame" className="book-frame" />
 
-        <div className="story-content">
-          <div className="story-text">
-            {(storyData.story || storyData.storyText) ? (
-              <div className="story-paragraphs">
-                {(storyData.story || storyData.storyText).split('\n').map((paragraph, index) => (
-                  paragraph.trim() && (
-                    <p key={index} className="story-paragraph">
-                      {paragraph.trim()}
-                    </p>
-                  )
-                ))}
-              </div>
-            ) : (
-              <p className="no-story">No story available</p>
-            )}
-          </div>
-
-          <div className="story-controls">
-            <button
-              className={`play-btn ${isPlaying ? 'playing' : ''}`}
-              onClick={handlePlayStory}
-              disabled={!(storyData.story || storyData.storyText)}
-            >
-              {isPlaying ? (
-                <>⏸️ Pause Story</>
-              ) : (
-                <>🔊 Read Story Aloud</>
+        <div className="book-pages">
+          {/* Left page */}
+          <div className={`book-page left-page ${isFlipping && flipDirection === 'backward' ? 'flip-backward' : ''}`}>
+            <div className="page-content">
+              {pages[leftPageIndex] && (
+                <>
+                  {currentSpread === 0 && storyData.imagePreview && (
+                    <img
+                      src={storyData.imagePreview}
+                      alt="Your drawing"
+                      className="page-drawing"
+                    />
+                  )}
+                  <p className="page-text">{pages[leftPageIndex]}</p>
+                  <span className="page-number">{leftPageIndex + 1}</span>
+                </>
               )}
-            </button>
+            </div>
+          </div>
 
-            {storyData.language && (
-              <div className="story-info">
-                <span className="language-tag">
-                  Language: {storyData.language}
-                </span>
-              </div>
-            )}
+          {/* Right page */}
+          <div className={`book-page right-page ${isFlipping && flipDirection === 'forward' ? 'flip-forward' : ''}`}>
+            <div className="page-content">
+              {pages[rightPageIndex] && (
+                <>
+                  <p className="page-text">{pages[rightPageIndex]}</p>
+                  <span className="page-number">{rightPageIndex + 1}</span>
+                </>
+              )}
+              {!pages[rightPageIndex] && pages[leftPageIndex] && (
+                <p className="page-text end-text">The End</p>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Navigation arrows */}
+        {currentSpread > 0 && (
+          <button className="page-nav prev-page" onClick={goToPrevSpread}>
+            ‹
+          </button>
+        )}
+        {currentSpread < totalSpreads - 1 && (
+          <button className="page-nav next-page" onClick={goToNextSpread}>
+            ›
+          </button>
+        )}
+      </div>
+
+      <div className="story-controls">
+        <button
+          className={`play-btn ${isPlaying ? 'playing' : ''}`}
+          onClick={handlePlayStory}
+          disabled={!storyText}
+        >
+          {isPlaying ? <>⏸️ Pause Story</> : <>🔊 Read Story Aloud</>}
+        </button>
+
+        {storyData.language && (
+          <span className="language-tag">
+            Language: {storyData.language}
+          </span>
+        )}
+
+        <span className="page-indicator">
+          Page {leftPageIndex + 1}–{Math.min(rightPageIndex + 1, pages.length)} of {pages.length}
+        </span>
       </div>
     </div>
   );
