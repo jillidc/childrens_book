@@ -8,10 +8,10 @@ const createStorySchema = Joi.object({
   userId: Joi.string().uuid().optional().allow(null),
   title: Joi.string().min(1).max(255).optional(),
   description: Joi.string().min(1).max(2000).required(),
-  storyText: Joi.string().min(1).max(10000).required(),
+  storyText: Joi.string().min(1).max(200000).required(),
   language: Joi.string().valid('english', 'spanish', 'french', 'chinese').default('english'),
   translationLanguage: Joi.string().valid('english', 'spanish', 'french', 'chinese').optional().allow(null),
-  imageUrl: Joi.string().uri().optional().allow(null),
+  imageUrl: Joi.string().max(10000).optional().allow(null, ''),
   imageFileName: Joi.string().max(255).optional().allow(null),
   audioUrl: Joi.string().uri().optional().allow(null)
 });
@@ -19,7 +19,7 @@ const createStorySchema = Joi.object({
 const updateStorySchema = Joi.object({
   title: Joi.string().min(1).max(255).optional(),
   description: Joi.string().min(1).max(2000).optional(),
-  storyText: Joi.string().min(1).max(10000).optional(),
+  storyText: Joi.string().min(1).max(200000).optional(),
   language: Joi.string().valid('english', 'spanish', 'french', 'chinese').optional(),
   translationLanguage: Joi.string().valid('english', 'spanish', 'french', 'chinese').optional().allow(null),
   audioUrl: Joi.string().uri().optional().allow(null)

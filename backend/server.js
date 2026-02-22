@@ -27,8 +27,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Routes
 app.use('/api/stories', require('./routes/stories'));
@@ -36,6 +36,7 @@ app.use('/api/generate-story', require('./routes/generateStory'));
 app.use('/api/text-to-speech', require('./routes/textToSpeech'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/book-conversion', require('./routes/bookConversion'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

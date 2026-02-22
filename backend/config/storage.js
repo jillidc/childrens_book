@@ -1,17 +1,22 @@
 const AWS = require('aws-sdk');
 require('dotenv').config();
 
-// Configure DigitalOcean Spaces (S3-compatible)
-const spacesEndpoint = new AWS.Endpoint(process.env.DO_SPACES_ENDPOINT);
-const s3 = new AWS.S3({
-  endpoint: spacesEndpoint,
-  accessKeyId: process.env.DO_SPACES_ACCESS_KEY,
-  secretAccessKey: process.env.DO_SPACES_SECRET_KEY,
-  region: process.env.DO_SPACES_REGION,
-  signatureVersion: 'v4'
-});
+const STORAGE_NOT_CONFIGURED = 'Storage not configured. Set DO_SPACES_ENDPOINT, DO_SPACES_ACCESS_KEY, DO_SPACES_SECRET_KEY, DO_SPACES_BUCKET, and DO_SPACES_REGION in .env for cloud uploads.';
 
-const BUCKET_NAME = process.env.DO_SPACES_BUCKET;
+let s3 = null;
+let BUCKET_NAME = null;
+
+if (process.env.DO_SPACES_ENDPOINT && process.env.DO_SPACES_ACCESS_KEY && process.env.DO_SPACES_SECRET_KEY && process.env.DO_SPACES_BUCKET) {
+  const spacesEndpoint = new AWS.Endpoint(process.env.DO_SPACES_ENDPOINT);
+  s3 = new AWS.S3({
+    endpoint: spacesEndpoint,
+    accessKeyId: process.env.DO_SPACES_ACCESS_KEY,
+    secretAccessKey: process.env.DO_SPACES_SECRET_KEY,
+    region: process.env.DO_SPACES_REGION || 'nyc3',
+    signatureVersion: 'v4'
+  });
+  BUCKET_NAME = process.env.DO_SPACES_BUCKET;
+}
 
 class StorageService {
   constructor() {
@@ -19,8 +24,15 @@ class StorageService {
     this.bucketName = BUCKET_NAME;
   }
 
+  _ensureConfigured() {
+    if (!this.s3 || !this.bucketName) {
+      throw new Error(STORAGE_NOT_CONFIGURED);
+    }
+  }
+
   // Upload file to DigitalOcean Spaces
   async uploadFile(fileBuffer, fileName, mimeType, folder = 'images') {
+    this._ensureConfigured();
     const key = `${folder}/${Date.now()}-${fileName}`;
 
     const params = {
@@ -46,6 +58,13 @@ class StorageService {
       console.error('❌ Error uploading file:', error);
       throw new Error('Failed to upload file to storage');
     }
+  }
+
+  // Upload raw buffer (e.g. AI-generated image) and return public URL
+  async uploadImageBuffer(buffer, mimeType = 'image/png', folder = 'generated') {
+    const ext = mimeType === 'image/jpeg' || mimeType === 'image/jpg' ? 'jpg' : 'png';
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+    return this.uploadFile(buffer, fileName, mimeType, folder);
   }
 
   // Upload image with processing
@@ -82,6 +101,7 @@ class StorageService {
 
   // Delete file from storage
   async deleteFile(key) {
+    this._ensureConfigured();
     const params = {
       Bucket: this.bucketName,
       Key: key
@@ -99,6 +119,7 @@ class StorageService {
 
   // Get file URL (for private files with signed URLs)
   getSignedUrl(key, expiresIn = 3600) {
+    this._ensureConfigured();
     const params = {
       Bucket: this.bucketName,
       Key: key,
@@ -115,6 +136,7 @@ class StorageService {
 
   // Check if file exists
   async fileExists(key) {
+    this._ensureConfigured();
     const params = {
       Bucket: this.bucketName,
       Key: key
@@ -133,6 +155,7 @@ class StorageService {
 
   // List files in a folder
   async listFiles(folder = '', limit = 1000) {
+    this._ensureConfigured();
     const params = {
       Bucket: this.bucketName,
       Prefix: folder,
@@ -187,6 +210,7 @@ class StorageService {
 
   // Test connection to storage service
   async testConnection() {
+    this._ensureConfigured();
     try {
       const params = {
         Bucket: this.bucketName

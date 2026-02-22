@@ -7,7 +7,7 @@ const axios = require('axios');
 const textToSpeechSchema = Joi.object({
   text: Joi.string().min(1).max(10000).required(),
   voiceId: Joi.string().optional().default('pNInz6obpgDQGcFmaJgB'), // Default: Adam voice
-  modelId: Joi.string().optional().default('eleven_monolingual_v1'),
+  modelId: Joi.string().optional().default('eleven_multilingual_v2'),
   stability: Joi.number().min(0).max(1).optional().default(0.5),
   similarityBoost: Joi.number().min(0).max(1).optional().default(0.8),
   style: Joi.number().min(0).max(1).optional().default(0.2),
@@ -26,7 +26,7 @@ const generateAudioWithElevenLabs = async (text, options = {}) => {
 
   const {
     voiceId = 'pNInz6obpgDQGcFmaJgB',
-    modelId = 'eleven_monolingual_v1',
+    modelId = 'eleven_multilingual_v2',
     stability = 0.5,
     similarityBoost = 0.8,
     style = 0.2,
