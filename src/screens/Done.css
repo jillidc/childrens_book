@@ -127,11 +127,21 @@
   flex-shrink: 0;
 }
 
+/* Drawing image - fact icon */
 .fact-drawing-img {
-  width: 24px;
-  height: 24px;
+  display: inline-block;
+  width: 28px;
+  height: auto;
+  max-width: 100%;
   object-fit: contain;
+  object-position: center;
   vertical-align: middle;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.12));
+  transition: transform 0.3s ease;
+}
+
+.fun-fact:hover .fact-drawing-img {
+  transform: scale(1.08);
 }
 
 .fun-fact p {

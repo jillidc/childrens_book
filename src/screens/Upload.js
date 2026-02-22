@@ -146,7 +146,7 @@ const Upload = () => {
           onClick={handleSubmit}
           disabled={!image || !description.trim()}
         >
-          Create My Story! ✨
+          Create My Story
         </button>
       </div>
 
