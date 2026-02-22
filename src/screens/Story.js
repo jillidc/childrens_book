@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { generateWithTimestamps, clampSpeed } from '../services/elevenLabsService';
+import { generateWithTimestamps } from '../services/elevenLabsService';
 import openBook from '../assets/open-book.png';
 import './Story.css';
 import nightSky from '../assets/night-sky.gif';
@@ -69,8 +69,6 @@ const Story = () => {
   const totalSpreadsRef = useRef(1);
   const speakPageRef = useRef(null);
   const autoAdvanceRef = useRef(true);
-  const isPlayingRef = useRef(false);
-  const speedInitialRef = useRef(true);
   const navigate = useNavigate();
 
   const pages = useMemo(
@@ -82,7 +80,6 @@ const Story = () => {
   const leftIdx = currentSpread * 2;
   const rightIdx = currentSpread * 2 + 1;
 
-  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
   useEffect(() => { currentSpreadRef.current = currentSpread; }, [currentSpread]);
   useEffect(() => { pagesRef.current = pages; }, [pages]);
   useEffect(() => { totalSpreadsRef.current = totalSpreads; }, [totalSpreads]);
@@ -171,9 +168,7 @@ const Story = () => {
     setIsLoadingAudio(true);
 
     try {
-      const result = await generateWithTimestamps(text, {
-        speed: clampSpeed(readingSpeedRef.current)
-      });
+      const result = await generateWithTimestamps(text);
 
       if (!result) {
         setIsLoadingAudio(false);
@@ -185,6 +180,7 @@ const Story = () => {
       wordTimingsRef.current = wordTimings;
 
       const audio = new Audio(audioUrl);
+      audio.playbackRate = readingSpeedRef.current;
       audioRef.current = audio;
 
       audio.addEventListener('timeupdate', () => {
@@ -245,18 +241,9 @@ const Story = () => {
 
   useEffect(() => {
     readingSpeedRef.current = readingSpeed;
-    if (speedInitialRef.current) {
-      speedInitialRef.current = false;
-      return;
+    if (audioRef.current) {
+      audioRef.current.playbackRate = readingSpeed;
     }
-    if (isPlayingRef.current && speakPageRef.current) {
-      const spread = currentSpreadRef.current;
-      const left = pagesRef.current[spread * 2]?.text || '';
-      const right = pagesRef.current[spread * 2 + 1]?.text || '';
-      const text = [left, right].filter(Boolean).join(' ');
-      if (text) speakPageRef.current(text);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readingSpeed]);
 
   const handlePlayPause = useCallback(() => {
