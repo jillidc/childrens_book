@@ -79,11 +79,14 @@ const Upload = () => {
         <div className="image-upload">
           <div className="upload-box">
             {imagePreview ? (
-              <img src={imagePreview} alt="Preview" className="image-preview" />
+              <div className="upload-preview-wrap">
+                <img src={imagePreview} alt="Preview" className="image-preview" title="Click to replace" />
+              </div>
             ) : (
               <div className="upload-placeholder">
                 <div className="upload-icon"><img src={drawingImg} alt="" className="upload-drawing-img" /></div>
                 <p>Upload your drawing</p>
+                <label htmlFor="image-upload" className="upload-label">Choose Image</label>
               </div>
             )}
             <input
@@ -93,9 +96,6 @@ const Upload = () => {
               className="file-input"
               id="image-upload"
             />
-            <label htmlFor="image-upload" className="upload-label">
-              {imagePreview ? 'Change Image' : 'Choose Image'}
-            </label>
           </div>
         </div>
 
