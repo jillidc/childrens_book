@@ -58,10 +58,10 @@
 /* Pages sit on top of the book frame */
 .book-pages {
   position: absolute;
-  top: 22%;
-  left: 7%;
+  top: 12%;
+  left: 6%;
   right: 7%;
-  bottom: 25%;
+  bottom: 13%;
   display: flex;
   gap: 4%;
 }
