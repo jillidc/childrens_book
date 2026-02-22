@@ -133,13 +133,14 @@ const Story = () => {
 
   useEffect(() => {
     const cache = audioCacheRef.current;
+    const preloadPromises = preloadPromisesRef.current;
     return () => {
       stopSpeech();
       for (const entry of cache.values()) {
         if (entry?.audioUrl?.startsWith('blob:')) URL.revokeObjectURL(entry.audioUrl);
       }
       cache.clear();
-      preloadPromisesRef.current.clear();
+      preloadPromises.clear();
     };
   }, [stopSpeech]);
 
