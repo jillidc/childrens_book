@@ -30,9 +30,13 @@ const storyGenLimiter = makeStrictLimiter(15);
 const ttsLimiter      = makeStrictLimiter(60);
 const aiLimiter       = makeStrictLimiter(20);
 
-// CORS configuration
+// CORS configuration — FRONTEND_URL can be a single URL or comma-separated (e.g. Vercel prod + preview)
+const frontendUrls = (process.env.FRONTEND_URL || 'http://localhost:3000')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: frontendUrls.length > 1 ? frontendUrls : frontendUrls[0],
   credentials: true,
   optionsSuccessStatus: 200
 };

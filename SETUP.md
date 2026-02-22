@@ -155,11 +155,12 @@ You should see the Upload screen with:
 3. Set environment variables in dashboard
 4. Deploy
 
-### Frontend (Netlify/Vercel)
-1. Connect GitHub repository
-2. Build command: `npm run build`
-3. Publish directory: `build`
-4. Set environment variable: `REACT_APP_API_BASE_URL=https://your-backend-url/api`
+### Frontend (Vercel) + Backend (Railway)
+See **[docs/VERCEL_AND_RAILWAY.md](docs/VERCEL_AND_RAILWAY.md)** for step-by-step linking of Vercel (frontend) and Railway (backend), including env vars and CORS.
+
+Quick link checklist:
+- **Vercel**: `REACT_APP_API_BASE_URL` = `https://<your-railway-app>.up.railway.app/api`
+- **Railway**: `FRONTEND_URL` = `https://<your-vercel-app>.vercel.app` (or comma-separated list)
 
 ## Troubleshooting
 
