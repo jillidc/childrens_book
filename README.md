@@ -2,7 +2,7 @@
 
 **Team WICS Hackathon**: Jillian, Pravin, Christina, Anderson
 
-Draw My Story is a magical children's story generation app that transforms drawings and images into personalized stories using AI.
+Draw My Story is a magical children's story generation platform that transforms drawings and images into personalized stories using AI.
 
 ## 🎯 Project Goal
 
@@ -51,7 +51,7 @@ cd backend && npm install && npm run dev
 - **Solana** - Blockchain authentication
 - **iPad App** - Native mobile experience
 
-## 📱 App Screens
+## 📱 Platform Screens
 
 1. **Upload** - Image upload, description input, language selection
 2. **Loading** - Animated story generation progress
