@@ -140,7 +140,7 @@
 }
 
 .story-card:hover {
-  transform: translateY(-20px);
+  transform: translateY(-10px);
 }
 
 .story-image {
