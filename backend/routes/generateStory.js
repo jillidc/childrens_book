@@ -171,6 +171,23 @@ router.post('/', async (req, res) => {
 
       const pageResults = await generatePageImages(pages, parsedJson || {});
 
+      let generatedTitle = null;
+      let generatedSummary = null;
+      try {
+        const titlePrompt = `Given this children's story, generate a creative, fun title (max 8 words) and a one-sentence summary (max 120 characters) that captures the heart of the story.\n\nStory:\n${fullText.slice(0, 1500)}\n\nRespond with ONLY valid JSON, no markdown:\n{"title": "...", "summary": "..."}`;
+        const titleRaw = await gemini.generateText(titlePrompt, {
+          model: gemini.EXPANSION_MODEL,
+          temperature: 0.9,
+          maxOutputTokens: 200
+        });
+        const titleResult = gemini.parseJsonFromText(titleRaw);
+        generatedTitle = titleResult.title || null;
+        generatedSummary = titleResult.summary || null;
+        console.log(`[generate-story] AI title: "${generatedTitle}"`);
+      } catch (e) {
+        console.warn('[generate-story] Title generation failed:', e.message);
+      }
+
       if (translationLanguage && translationLanguage !== language) {
         try {
           const translatedFull = await gemini.generateText(
@@ -189,6 +206,8 @@ router.post('/', async (req, res) => {
           pages: pageResults,
           fullText,
           story: fullText,
+          title: generatedTitle || null,
+          summary: generatedSummary || null,
           translatedStory: translatedPages ? translatedPages.join('\n\n') : null,
           translatedPages: translatedPages || null,
           language,

@@ -68,7 +68,8 @@ const Loading = () => {
           fullText,
           storyText: fullText,
           story: fullText,
-          title: storyData.title || autoTitle,
+          title: data.title || storyData.title || autoTitle,
+          description: data.summary || storyData.description,
           createdAt: storyData.createdAt || new Date().toISOString()
         };
 

@@ -2,16 +2,24 @@
 
 **Team WICS Hackathon**: Jillian, Pravin, Christina, Anderson
 
-A magical children's story generation app that transforms drawings into personalized stories using AI.
+Draw My Story is a magical children's story generation platform that transforms drawings and images into personalized stories using AI.
+
+## 🎯 Project Goal
+
+Our goal is to create an engaging platform where children's creativity comes to life through AI-powered storytelling, making reading interactive and personalized. For many young kids, reading can feel tedious, time-consuming, and lonely—especially for those whose parents are unable to read to them during bedtime. With Draw My Story, we seek to make reading not only fun, relatable, and engaging but also soothing, comforting, and exciting to anticipate each night.
+
+For future extensions of our project, we seek to incorporate multiple languages so that:
+
+1. Kids seeking to learn a second language can listen to and read along with the story narrator while having real-time access to a direct, native language translation of the foreign text that they are learning; we hope to have a translation in the kids' native tongue so that they can strengthen their foreign language comprehension by reinforcing translations between foreign and native tongues and building off of prior language knowledge.
+2. Teens practicing for language exams can get customized content that is displayed in both their native language and foreign language of study. This would grant teens the opportunity to gain greater exposure to variety in the tonal inflections in the foreign language that they are studying.
+We hope that our platform can support kids and teens who may not have regular access to native speakers (i.e. kids learning English in communities without many english speakers, teens studying Korean in communities with few Korean speakers beside their teachers at school during limited school hours, etc.).
 
 ## ✨ Features
 
 - **🎨 Draw & Upload**: Children can upload their drawings
 - **📝 Story Generation**: AI creates personalized stories using Google Gemini
 - **🔊 Text-to-Speech**: Stories read aloud with ElevenLabs voices
-- **🌍 Multi-language**: Support for English, Spanish, French, Chinese
 - **📚 Story Library**: Save and revisit created stories
-- **📱 Cross-platform**: Web and iPad support (via Capacitor)
 
 ## 🚀 Quick Start
 
@@ -30,7 +38,6 @@ cd backend && npm install && npm run dev
 ### Frontend
 - **React** - UI framework
 - **React Router** - Navigation
-- **Capacitor** - Mobile app wrapper
 - **CSS3** - Styling with child-friendly design
 
 ### Backend
@@ -44,7 +51,7 @@ cd backend && npm install && npm run dev
 - **Solana** - Blockchain authentication
 - **iPad App** - Native mobile experience
 
-## 📱 App Screens
+## 📱 Platform Screens
 
 1. **Upload** - Image upload, description input, language selection
 2. **Loading** - Animated story generation progress

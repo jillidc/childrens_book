@@ -26,14 +26,6 @@ const upload = multer({
   }
 });
 
-const pdfFilter = (req, file, cb) => {
-  if (file.mimetype === 'application/pdf') {
-    cb(null, true);
-  } else {
-    cb(new Error('Only PDF files are allowed'), false);
-  }
-};
-
 const audioFilter = (req, file, cb) => {
   if (file.mimetype === 'audio/mpeg' || file.mimetype === 'audio/mp3' || file.mimetype.startsWith('audio/')) {
     cb(null, true);
@@ -41,12 +33,6 @@ const audioFilter = (req, file, cb) => {
     cb(new Error('Only audio files are allowed'), false);
   }
 };
-
-const uploadPdf = multer({
-  storage,
-  fileFilter: pdfFilter,
-  limits: { fileSize: 20 * 1024 * 1024, files: 1 }
-});
 
 const uploadAudio = multer({
   storage,
@@ -128,28 +114,6 @@ router.post('/image', authMiddleware, upload.single('image'), async (req, res) =
     res.status(500).json({
       success: false,
       error: 'Failed to upload image',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
-// POST /api/upload/pdf - Upload PDF (auth required)
-router.post('/pdf', authMiddleware, uploadPdf.single('pdf'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, error: 'No PDF file provided. Use multipart field "pdf".' });
-    }
-    const uploadResult = await storageService.uploadPdf(req.file.buffer, req.file.originalname);
-    res.json({
-      success: true,
-      data: { url: uploadResult.url, key: uploadResult.key, originalName: req.file.originalname, size: req.file.size },
-      message: 'PDF uploaded successfully'
-    });
-  } catch (error) {
-    console.error('Error uploading PDF:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to upload PDF',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

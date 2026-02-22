@@ -58,11 +58,17 @@ const Story = () => {
   const [flipDirection, setFlipDirection] = useState('');
   const [readingSpeed, setReadingSpeed] = useState(1.0);
   const [highlightRange, setHighlightRange] = useState({ start: null, end: null });
+  const [autoAdvance, setAutoAdvance] = useState(true);
 
   const audioRef = useRef(null);
   const wordTimingsRef = useRef([]);
   const readingSpeedRef = useRef(readingSpeed);
   const utteranceRef = useRef(null);
+  const currentSpreadRef = useRef(0);
+  const pagesRef = useRef([]);
+  const totalSpreadsRef = useRef(1);
+  const speakPageRef = useRef(null);
+  const autoAdvanceRef = useRef(true);
   const navigate = useNavigate();
 
   useEffect(() => { readingSpeedRef.current = readingSpeed; }, [readingSpeed]);
@@ -75,6 +81,11 @@ const Story = () => {
   const totalSpreads = Math.max(1, Math.ceil(pages.length / 2));
   const leftIdx = currentSpread * 2;
   const rightIdx = currentSpread * 2 + 1;
+
+  useEffect(() => { currentSpreadRef.current = currentSpread; }, [currentSpread]);
+  useEffect(() => { pagesRef.current = pages; }, [pages]);
+  useEffect(() => { totalSpreadsRef.current = totalSpreads; }, [totalSpreads]);
+  useEffect(() => { autoAdvanceRef.current = autoAdvance; }, [autoAdvance]);
 
   useEffect(() => {
     const saved = localStorage.getItem('currentStory');
@@ -122,6 +133,25 @@ const Story = () => {
     utterance.onend = () => {
       utteranceRef.current = null;
       setIsPlaying(false);
+
+      if (autoAdvanceRef.current) {
+        const nextSpread = currentSpreadRef.current + 1;
+        if (nextSpread < totalSpreadsRef.current) {
+          setFlipDirection('forward');
+          setIsFlipping(true);
+          setTimeout(() => {
+            setCurrentSpread(nextSpread);
+            setIsFlipping(false);
+            setFlipDirection('');
+            const nextLeft = pagesRef.current[nextSpread * 2]?.text || '';
+            const nextRight = pagesRef.current[nextSpread * 2 + 1]?.text || '';
+            const nextText = [nextLeft, nextRight].filter(Boolean).join(' ');
+            if (nextText && speakPageRef.current) {
+              setTimeout(() => speakPageRef.current(nextText), 200);
+            }
+          }, 400);
+        }
+      }
     };
     utterance.onerror = () => {
       utteranceRef.current = null;
@@ -172,6 +202,25 @@ const Story = () => {
         setIsPlaying(false);
         setHighlightRange({ start: null, end: null });
         if (src.startsWith('blob:')) URL.revokeObjectURL(src);
+
+        if (autoAdvanceRef.current) {
+          const nextSpread = currentSpreadRef.current + 1;
+          if (nextSpread < totalSpreadsRef.current) {
+            setFlipDirection('forward');
+            setIsFlipping(true);
+            setTimeout(() => {
+              setCurrentSpread(nextSpread);
+              setIsFlipping(false);
+              setFlipDirection('');
+              const nextLeft = pagesRef.current[nextSpread * 2]?.text || '';
+              const nextRight = pagesRef.current[nextSpread * 2 + 1]?.text || '';
+              const nextText = [nextLeft, nextRight].filter(Boolean).join(' ');
+              if (nextText && speakPageRef.current) {
+                setTimeout(() => speakPageRef.current(nextText), 200);
+              }
+            }, 400);
+          }
+        }
       };
 
       audio.onerror = () => {
@@ -190,6 +239,8 @@ const Story = () => {
       speakWithSynthesis(text);
     }
   }, [stopSpeech, speakWithSynthesis]);
+
+  useEffect(() => { speakPageRef.current = speakPage; }, [speakPage]);
 
   const handlePlayPause = useCallback(() => {
     if (isPlaying || isLoadingAudio) {
@@ -350,6 +401,15 @@ const Story = () => {
                 </button>
               ))}
             </div>
+          </div>
+          <div className="setting-item">
+            <span className="setting-label">Auto-flip</span>
+            <button
+              className={`toggle-btn ${autoAdvance ? 'toggle-on' : 'toggle-off'}`}
+              onClick={() => setAutoAdvance(prev => !prev)}
+            >
+              <span className="toggle-knob" />
+            </button>
           </div>
         </div>
 

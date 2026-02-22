@@ -49,11 +49,9 @@ app.use('/api/generate-story', storyGenLimiter, require('./routes/generateStory'
 app.use('/api/text-to-speech', ttsLimiter, require('./routes/textToSpeech'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/users', require('./routes/users'));
-app.use('/api/pdf', aiLimiter, require('./routes/pdf'));
 app.use('/api/describe-image', aiLimiter, require('./routes/describeImage'));
 app.use('/api/translate', aiLimiter, require('./routes/translate'));
 app.use('/api/generate-image', aiLimiter, require('./routes/imageGeneration'));
-app.use('/api/book-conversion', require('./routes/bookConversion'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
