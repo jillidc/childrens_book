@@ -3,6 +3,27 @@ const router = express.Router();
 const Joi = require('joi');
 const axios = require('axios');
 
+// ElevenLabs allows max 2 concurrent requests on typical plans — serialize with-timestamps calls
+const MAX_CONCURRENT_ELEVENLABS = 2;
+let activeElevenLabs = 0;
+const elevenLabsQueue = [];
+
+function runWhenSlotFree(fn) {
+  return new Promise((resolve, reject) => {
+    const run = () => {
+      activeElevenLabs++;
+      Promise.resolve(fn())
+        .then(resolve, reject)
+        .finally(() => {
+          activeElevenLabs--;
+          if (elevenLabsQueue.length > 0) elevenLabsQueue.shift()();
+        });
+    };
+    if (activeElevenLabs < MAX_CONCURRENT_ELEVENLABS) run();
+    else elevenLabsQueue.push(run);
+  });
+}
+
 // Rachel — warm, calm, soothing female voice (ideal for children's storytelling)
 const DEFAULT_VOICE_ID   = '21m00Tcm4TlvDq8ikWAM';
 // eleven_v3 — most expressive model, ideal for storytelling and audiobook narration
@@ -203,26 +224,28 @@ const generateAudioWithTimestamps = async (text, options = {}) => {
   console.log(`[TTS] Annotated text: "${annotated.slice(0, 120)}…"`);
 
   try {
-    const response = await axios.post(
-      `${ELEVENLABS_API_URL}/text-to-speech/${voiceId}/with-timestamps`,
-      {
-        text: annotated,
-        model_id: modelId,
-        voice_settings: {
-          stability,
-          similarity_boost: similarityBoost,
-          style,
-          use_speaker_boost: useSpeakerBoost,
-          speed
-        }
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'xi-api-key': apiKey,
+    const response = await runWhenSlotFree(() =>
+      axios.post(
+        `${ELEVENLABS_API_URL}/text-to-speech/${voiceId}/with-timestamps`,
+        {
+          text: annotated,
+          model_id: modelId,
+          voice_settings: {
+            stability,
+            similarity_boost: similarityBoost,
+            style,
+            use_speaker_boost: useSpeakerBoost,
+            speed
+          }
         },
-        timeout: 90000
-      }
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'xi-api-key': apiKey,
+          },
+          timeout: 90000
+        }
+      )
     );
 
     const { audio_base64, alignment } = response.data;
