@@ -102,7 +102,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/stories - Create new story (auth required)
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { error, value } = createStorySchema.validate(req.body);
+    const { error, value } = createStorySchema.validate(req.body, { stripUnknown: true });
 
     if (error) {
       return res.status(400).json({
@@ -133,7 +133,7 @@ router.post('/', authMiddleware, async (req, res) => {
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const { error, value } = updateStorySchema.validate(req.body);
+    const { error, value } = updateStorySchema.validate(req.body, { stripUnknown: true });
 
     if (error) {
       return res.status(400).json({

@@ -1,18 +1,25 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { generateWithTimestamps, clampSpeed } from '../services/elevenLabsService';
+import openBook from '../assets/open-book.png';
 import './Story.css';
+import nightSky from '../assets/night-sky.png';
+import cloudsPng from '../assets/clouds.png';
 
-function getPagesAndFullText(storyData) {
-  const raw = storyData.storyText ?? storyData.story ?? storyData.fullText ?? '';
+function getPagesFromStory(storyData) {
   if (storyData.pages && Array.isArray(storyData.pages) && storyData.pages.length > 0) {
-    const fullText = storyData.fullText || storyData.pages.map(p => p.text).join('\n\n');
-    return { pages: storyData.pages, fullText };
+    return storyData.pages.map(p =>
+      typeof p === 'string' ? { text: p, imageUrl: null } : p
+    );
   }
+
+  const raw = storyData.storyText ?? storyData.story ?? storyData.fullText ?? '';
+  if (!raw) return [{ text: 'No story content available.', imageUrl: null }];
+
   try {
     const parsed = JSON.parse(raw);
     if (parsed && parsed.version === 2 && Array.isArray(parsed.pages)) {
-      return { pages: parsed.pages, fullText: parsed.fullText || parsed.pages.map(p => p.text).join('\n\n') };
+      return parsed.pages;
     }
   } catch (_) {}
   return { pages: null, fullText: raw || storyData.story || '' };
@@ -24,25 +31,17 @@ const SPEED_OPTIONS = [
   { value: 1.15, label: 'Fast'   },
 ];
 
-function HighlightedText({ text, charStart, charEnd, highlightRef }) {
-  if (charStart == null || charEnd == null || charStart >= text.length) {
-    return <>{text}</>;
+  const sentences = raw.split(/(?<=[.!?])\s+/).filter(s => s.trim());
+  const pages = [];
+  for (let i = 0; i < sentences.length; i += 3) {
+    pages.push({ text: sentences.slice(i, i + 3).join(' '), imageUrl: null });
   }
-  const before = text.slice(0, charStart);
-  const word = text.slice(charStart, charEnd);
-  const after = text.slice(charEnd);
-  return (
-    <>
-      {before}
-      <span className="highlighted-word" ref={highlightRef}>{word}</span>
-      {after}
-    </>
-  );
+  return pages.length > 0 ? pages : [{ text: raw, imageUrl: null }];
 }
 
 const Story = () => {
   const [storyData, setStoryData] = useState(null);
-  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const [currentSpread, setCurrentSpread] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [highlightRange, setHighlightRange] = useState({ start: null, end: null });
@@ -59,40 +58,32 @@ const Story = () => {
   const shouldAutoPlayRef   = useRef(false);
   const readingSpeedRef     = useRef(readingSpeed);
 
+  const [isFlipping, setIsFlipping] = useState(false);
+  const [flipDirection, setFlipDirection] = useState('');
+  const utteranceRef = useRef(null);
   const navigate = useNavigate();
 
-  const { pages, fullText } = useMemo(
-    () => (storyData ? getPagesAndFullText(storyData) : { pages: null, fullText: '' }),
+  const pages = useMemo(
+    () => (storyData ? getPagesFromStory(storyData) : []),
     [storyData]
   );
-  const hasMultiplePages = pages && pages.length > 1;
 
-  const currentPageText = useMemo(() => {
-    if (hasMultiplePages) return pages[currentPageIndex]?.text || '';
-    return fullText;
-  }, [hasMultiplePages, pages, currentPageIndex, fullText]);
-
-  // Keep refs in sync with state
-  useEffect(() => { autoScrollRef.current = autoScroll; }, [autoScroll]);
-  useEffect(() => { pagesRef.current = pages; }, [pages]);
-  useEffect(() => { currentPageIndexRef.current = currentPageIndex; }, [currentPageIndex]);
-  useEffect(() => { readingSpeedRef.current = readingSpeed; }, [readingSpeed]);
+  const totalSpreads = Math.max(1, Math.ceil(pages.length / 2));
+  const leftIdx = currentSpread * 2;
+  const rightIdx = currentSpread * 2 + 1;
 
   useEffect(() => {
-    const currentStory = localStorage.getItem('currentStory');
-    if (currentStory) {
-      setStoryData(JSON.parse(currentStory));
+    const saved = localStorage.getItem('currentStory');
+    if (saved) {
+      setStoryData(JSON.parse(saved));
     } else {
       navigate('/upload');
     }
   }, [navigate]);
 
-  // Auto-scroll: keep the highlighted word in view
   useEffect(() => {
-    if (autoScroll && highlightRef.current && highlightRange.start != null) {
-      highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  }, [highlightRange, autoScroll]);
+    return () => { window.speechSynthesis.cancel(); };
+  }, []);
 
   const stopSpeech = useCallback(() => {
     // Stop ElevenLabs audio
@@ -115,39 +106,35 @@ const Story = () => {
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate  = readingSpeedRef.current;
+    window.speechSynthesis.cancel();
+    utteranceRef.current = null;
+    setIsPlaying(false);
+  }, []);
+
+  const speakText = useCallback((text) => {
+    stopSpeech();
+    if (!text || !('speechSynthesis' in window)) return;
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.85;
     utterance.pitch = 1.1;
 
     const voices    = window.speechSynthesis.getVoices();
     const preferred = voices.find(v =>
       v.name.toLowerCase().includes('samantha') ||
       v.name.toLowerCase().includes('karen') ||
-      v.name.toLowerCase().includes('zira') ||
       v.name.toLowerCase().includes('google')
     );
     if (preferred) utterance.voice = preferred;
 
-    utterance.onboundary = (e) => {
-      if (e.name === 'word') {
-        const start = e.charIndex;
-        const len = e.charLength || text.slice(start).match(/^\S+/)?.[0]?.length || 1;
-        setHighlightRange({ start, end: start + len });
-      }
-    };
-
-    const onDone = () => {
+    utterance.onend = () => {
+      utteranceRef.current = null;
       setIsPlaying(false);
-      setHighlightRange({ start: null, end: null });
-      if (autoScrollRef.current && pagesRef.current) {
-        const nextIdx = currentPageIndexRef.current + 1;
-        if (nextIdx < pagesRef.current.length) {
-          shouldAutoPlayRef.current = true;
-          setCurrentPageIndex(nextIdx);
-        }
-      }
     };
-
-    utterance.onend   = onDone;
-    utterance.onerror = () => { setIsPlaying(false); setHighlightRange({ start: null, end: null }); };
+    utterance.onerror = () => {
+      utteranceRef.current = null;
+      setIsPlaying(false);
+    };
 
     setIsPlaying(true);
     window.speechSynthesis.speak(utterance);
@@ -219,40 +206,41 @@ const Story = () => {
     }
   }, [stopSpeech, speakWithSynthesis]);
 
-  // When page changes due to auto-advance, auto-play the new page
-  useEffect(() => {
-    if (!shouldAutoPlayRef.current || !pages) return;
-    shouldAutoPlayRef.current = false;
-    const text = pages[currentPageIndex]?.text;
-    if (text) speakPage(text);
-  }, [currentPageIndex, pages, speakPage]);
-
   const handlePlayPause = useCallback(() => {
     if (isPlaying) {
       stopSpeech();
     } else {
-      speakPage(currentPageText);
+      const left = pages[leftIdx]?.text || '';
+      const right = pages[rightIdx]?.text || '';
+      speakText([left, right].filter(Boolean).join('. '));
     }
-  }, [isPlaying, stopSpeech, speakPage, currentPageText]);
+  }, [isPlaying, stopSpeech, speakText, pages, leftIdx, rightIdx]);
 
-  const handlePageChange = useCallback((newIndex) => {
-    stopSpeech();
-    setCurrentPageIndex(newIndex);
-  }, [stopSpeech]);
+  const goToNextSpread = useCallback(() => {
+    if (currentSpread < totalSpreads - 1 && !isFlipping) {
+      stopSpeech();
+      setFlipDirection('forward');
+      setIsFlipping(true);
+      setTimeout(() => {
+        setCurrentSpread(prev => prev + 1);
+        setIsFlipping(false);
+        setFlipDirection('');
+      }, 400);
+    }
+  }, [currentSpread, totalSpreads, isFlipping, stopSpeech]);
 
-  const handleSpeedChange = (newSpeed) => {
-    setReadingSpeed(newSpeed);
-    readingSpeedRef.current = newSpeed;
-    // Stop current playback — ElevenLabs audio must be regenerated at the new speed
-    if (isPlaying || isLoadingAudio) stopSpeech();
-  };
-
-  useEffect(() => {
-    return () => {
-      if (audioRef.current) audioRef.current.pause();
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-    };
-  }, []);
+  const goToPrevSpread = useCallback(() => {
+    if (currentSpread > 0 && !isFlipping) {
+      stopSpeech();
+      setFlipDirection('backward');
+      setIsFlipping(true);
+      setTimeout(() => {
+        setCurrentSpread(prev => prev - 1);
+        setIsFlipping(false);
+        setFlipDirection('');
+      }, 400);
+    }
+  }, [currentSpread, isFlipping, stopSpeech]);
 
   const goToDone = () => { stopSpeech(); navigate('/done'); };
   const goBack = () => { stopSpeech(); navigate('/upload'); };
@@ -261,14 +249,14 @@ const Story = () => {
     return <div className="loading">Loading story...</div>;
   }
 
-  // Only show AI-generated images (imageUrl from Imagen 4).
-  // Never fall back to the original drawing thumbnail — it looks blurry at full size.
-  const currentImage = hasMultiplePages
-    ? (pages[currentPageIndex]?.imageUrl || null)
-    : null;
+   const leftPage = pages[leftIdx];
+  const rightPage = pages[rightIdx];
+  const leftImage = leftPage?.imageUrl || (currentSpread === 0 ? (storyData.imagePreview || storyData.imageUrl) : null);
+  const rightImage = rightPage?.imageUrl || null;
 
   return (
-    <div className="story-screen">
+    <div className="story-screen" style={{ backgroundImage: `url(${nightSky})` }}>
+      <div className="scrolling-clouds" style={{ backgroundImage: `url(${cloudsPng})` }} />
       <div className="story-header">
         <button className="back-btn" onClick={goBack}>← Back</button>
         <h1>Your Story</h1>
@@ -310,8 +298,23 @@ const Story = () => {
                 );
               });
             })()}
+      <div className="book-wrapper">
+        <img src={openBook} alt="Book frame" className="book-frame" />
+
+        <div className="book-pages">
+          <div className={`book-page left-page ${isFlipping && flipDirection === 'backward' ? 'flip-backward' : ''}`}>
+            <div className="page-content">
+              {leftPage && (
+                <>
+                  {leftImage && (
+                    <img src={leftImage} alt={`Page ${leftIdx + 1}`} className="page-drawing" />
+                  )}
+                  <p className="page-text">{leftPage.text}</p>
+                  <span className="page-number">{leftIdx + 1}</span>
+                </>
+              )}
+            </div>
           </div>
-        </div>
 
         {/* ── Image below text ── only show AI-generated images; placeholder otherwise */}
         <div className="story-image-block">
@@ -325,83 +328,47 @@ const Story = () => {
             <div className="story-image-placeholder">
               <span className="placeholder-text">📖</span>
               <span className="placeholder-label">Illustration generating…</span>
+          <div className={`book-page right-page ${isFlipping && flipDirection === 'forward' ? 'flip-forward' : ''}`}>
+            <div className="page-content">
+              {rightPage ? (
+                <>
+                  {rightImage && (
+                    <img src={rightImage} alt={`Page ${rightIdx + 1}`} className="page-drawing" />
+                  )}
+                  <p className="page-text">{rightPage.text}</p>
+                  <span className="page-number">{rightIdx + 1}</span>
+                </>
+              ) : leftPage ? (
+                <p className="page-text end-text">The End</p>
+              ) : null}
             </div>
-          )}
+          </div>
         </div>
 
-        {/* ── Pagination ── */}
-        {hasMultiplePages && (
-          <div className="story-pagination">
-            <button
-              type="button"
-              className="page-nav-btn"
-              disabled={currentPageIndex === 0}
-              onClick={() => handlePageChange(Math.max(0, currentPageIndex - 1))}
-            >
-              ← Previous
-            </button>
-            <span className="page-indicator">
-              Page {currentPageIndex + 1} of {pages.length}
-            </span>
-            <button
-              type="button"
-              className="page-nav-btn"
-              disabled={currentPageIndex >= pages.length - 1}
-              onClick={() => handlePageChange(Math.min(pages.length - 1, currentPageIndex + 1))}
-            >
-              Next →
-            </button>
-          </div>
+        {currentSpread > 0 && (
+          <button className="page-nav prev-page" onClick={goToPrevSpread}>&#8249;</button>
+        )}
+        {currentSpread < totalSpreads - 1 && (
+          <button className="page-nav next-page" onClick={goToNextSpread}>&#8250;</button>
+        )}
+      </div>
+
+      <div className="story-controls">
+        <button
+          className={`play-btn ${isPlaying ? 'playing' : ''}`}
+          onClick={handlePlayPause}
+          disabled={pages.length === 0}
+        >
+          {isPlaying ? <>&#9208;&#65039; Pause Story</> : <>&#128266; Read Story Aloud</>}
+        </button>
+
+        {storyData.language && (
+          <span className="language-tag">Language: {storyData.language}</span>
         )}
 
-        {/* ── Narrator controls ── */}
-        <div className="story-controls">
-          <button
-            className={`play-btn ${isPlaying ? 'playing' : ''} ${isLoadingAudio ? 'loading' : ''}`}
-            onClick={handlePlayPause}
-            disabled={!currentPageText || isLoadingAudio}
-          >
-            {isLoadingAudio ? '⏳ Loading voice…' : isPlaying ? '⏸️ Pause' : '🔊 Read This Page'}
-          </button>
-
-          <div className="narrator-settings">
-            {/* Auto-scroll toggle */}
-            <div className="setting-item">
-              <span className="setting-label">Auto-scroll</span>
-              <button
-                className={`toggle-btn ${autoScroll ? 'toggle-on' : 'toggle-off'}`}
-                onClick={() => setAutoScroll(v => !v)}
-                title="Automatically advance to the next page when reading finishes"
-              >
-                <span className="toggle-knob" />
-              </button>
-              <span className="setting-value">{autoScroll ? 'On' : 'Off'}</span>
-            </div>
-
-            {/* Speed buttons */}
-            <div className="setting-item">
-              <span className="setting-label">Speed</span>
-              <div className="speed-btn-group">
-                {SPEED_OPTIONS.map(({ value, label }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className={`speed-option${readingSpeed === value ? ' active' : ''}`}
-                    onClick={() => handleSpeedChange(value)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {storyData.language && (
-            <div className="story-info">
-              <span className="language-tag">Language: {storyData.language}</span>
-            </div>
-          )}
-        </div>
+        <span className="page-indicator">
+          Page {leftIdx + 1}{rightIdx < pages.length ? `–${rightIdx + 1}` : ''} of {pages.length}
+        </span>
       </div>
     </div>
   );

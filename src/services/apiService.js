@@ -4,18 +4,36 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:500
 class ApiService {
   constructor() {
     this.baseURL = API_BASE_URL;
+    this._authToken = null;
   }
 
-  // Generic HTTP request method
+  setAuthToken(token) {
+    this._authToken = token;
+  }
+
+  getAuthToken() {
+    return this._authToken;
+  }
+
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
 
+    const authHeaders = {};
+    if (this._authToken) {
+      authHeaders['Authorization'] = `Bearer ${this._authToken}`;
+    }
+
+    const isFormData = options.body instanceof FormData;
+
+    const defaultHeaders = isFormData ? {} : { 'Content-Type': 'application/json' };
+
     const config = {
+      ...options,
       headers: {
-        'Content-Type': 'application/json',
+        ...defaultHeaders,
+        ...authHeaders,
         ...options.headers,
       },
-      ...options,
     };
 
     try {
