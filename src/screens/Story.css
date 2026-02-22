@@ -3,8 +3,8 @@
 ───────────────────────────────────────────────────────── */
 
 .story-screen {
-  min-height: 100vh;
-  padding: 20px;
+  height: 100vh;
+  padding: 8px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -14,6 +14,7 @@
   background-color: #0b1a3b;
   position: relative;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 /* ── Header ── */
@@ -21,15 +22,16 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: -4%;
   width: 100%;
   max-width: 1000px;
   position: relative;
-  z-index: 2;
+  z-index: 3;
 }
 
 .back-btn,
 .done-btn {
+  font-family: 'Patrick Hand', 'Comic Sans MS', cursive, sans-serif;
   background: rgba(255, 255, 255, 0.2);
   color: white;
   border: 2px solid white;
@@ -43,7 +45,7 @@
 .back-btn:hover,
 .done-btn:hover {
   background: white;
-  color: #667eea;
+  color: #000051;
 }
 
 .story-header-info {
@@ -72,19 +74,34 @@
   white-space: nowrap;
 }
 
-/* Book wrapper: positions everything relative to the book frame */
+/* Book wrapper: fills remaining space, centers content */
 .book-wrapper {
   position: relative;
   z-index: 2;
   width: 100%;
   max-width: 1200px;
-  margin: 0 auto;
+  margin: 0;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Inner container that matches the book frame's actual size */
+.book-inner {
+  position: relative;
+  max-height: 100%;
+  max-width: 70%;
+  display: flex;
 }
 
 .book-frame {
   width: 100%;
+  max-height: 100%;
   height: auto;
   display: block;
+  object-fit: contain;
 }
 
 /* Pages sit on top of the book frame */
@@ -96,6 +113,7 @@
   bottom: 13%;
   display: flex;
   gap: 4%;
+  overflow: hidden;
 }
 
 .book-page {
@@ -150,7 +168,7 @@
   max-height: 45%;
   object-fit: contain;
   border-radius: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 0;
 }
 
 .page-number {
@@ -158,7 +176,7 @@
   text-align: center;
   font-size: 1.2rem;
   color: #999;
-  margin-top: auto;
+  margin-top: 0;
   padding-top: 8px;
 }
 
@@ -231,7 +249,7 @@
 
 /* Controls below the book */
 .story-controls {
-  margin-top: 20px;
+  margin-top: -80px;
   display: flex;
   align-items: center;
   gap: 15px;
@@ -239,29 +257,34 @@
   justify-content: center;
   position: relative;
   z-index: 2;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: center;
+  padding: 28px 40px 20px;
+  min-height: 150px;
+  width: 1000px;
 }
 
 .play-btn {
-  background: linear-gradient(135deg, #48c78e, #06d6a0);
-  color: white;
+  background: url('../assets/blue-cloud-bg.png') center / 140% 140% no-repeat;
+  color: #000051;
   border: none;
   /* Fixed dimensions so the button never reflows when the label changes */
-  min-width: 210px;
-  padding: 14px 24px;
-  font-size: 1.1rem;
+  min-width: 160px;
+  padding: 8px 16px;
+  font-size: 1.5rem;
+  font-family: 'Patrick Hand', 'Comic Sans MS', cursive, sans-serif;
   font-weight: bold;
-  border-radius: 28px;
+  border-radius: 20px;
   cursor: pointer;
-  transition: background 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
-  align-self: flex-start;
-  box-shadow: 0 5px 16px rgba(6, 214, 160, 0.38);
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
   text-align: center;
   white-space: nowrap;
+  margin-top: 5px;
 }
 
 .play-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(6, 214, 160, 0.55);
 }
 
 .play-btn:disabled {
@@ -302,10 +325,11 @@
 }
 
 .setting-label {
-  font-size: 0.9rem;
+  font-size: 2rem;
   font-weight: 600;
-  color: #555;
+  color: white;
   min-width: 72px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .setting-value {
@@ -360,16 +384,17 @@
   display: flex;
   border-radius: 20px;
   overflow: hidden;
-  border: 2px solid #667eea;
+  border: 2px solid #DEF2FF;
 }
 
 .speed-option {
+  font-family: 'Patrick Hand', 'Comic Sans MS', cursive, sans-serif;
   flex: 1;
   padding: 5px 14px;
-  font-size: 0.82rem;
+  font-size: 1.2rem;
   font-weight: 600;
-  background: white;
-  color: #667eea;
+  background: transparent;
+  color: white;
   border: none;
   cursor: pointer;
   transition: background 0.18s ease, color 0.18s ease;
@@ -377,16 +402,19 @@
 }
 
 .speed-option:not(:last-child) {
-  border-right: 1.5px solid #667eea;
+  border-right: 1.5px solid #DEF2FF;
 }
 
 .speed-option.active {
-  background: #667eea;
-  color: white;
+  background: #DEF2FF;
+  color: #000051;
+  font-weight: 700;
+  /* Patrick Hand has no bold variant; shadow makes active state look heavier */
+  text-shadow: 0 0 0.5px #000051, 0 0 0.5px #000051;
 }
 
 .speed-option:hover:not(.active) {
-  background: #f0f2ff;
+  background: transparent;
 }
 
 /* ── Word highlight for TTS ── */
@@ -399,7 +427,7 @@
 
 /* ── Language tag ── */
 .story-info {
-  margin-top: 4px;
+  margin-top: 0;
 }
 
 .language-tag {
@@ -407,12 +435,12 @@
   color: white;
   padding: 5px 12px;
   border-radius: 15px;
-  font-size: 0.9rem;
+  font-size: 1.05rem;
 }
 
 .page-indicator {
   color: rgba(255,255,255,0.8);
-  font-size: 0.9rem;
+  font-size: 1.05rem;
 }
 
 @media (max-width: 768px) {
@@ -426,7 +454,15 @@
   }
 
   .story-controls {
-    padding: 18px 24px 24px;
+    padding: 26px 24px 24px;
+  }
+
+  .setting-label {
+    font-size: 2rem;
+  }
+
+  .speed-option {
+    font-size: 1.2rem;
   }
 
   .page-nav {
@@ -449,10 +485,10 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 200%;
+  width: 200vw;
   height: 100%;
   background-repeat: repeat-x;
-  background-size: 100% auto;
+  background-size: auto 100%;
   background-position: 0 center;
   animation: scroll-clouds 80s linear infinite;
   pointer-events: none;

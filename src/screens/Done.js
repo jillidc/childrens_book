@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Done.css';
-import nightSky from '../assets/night-sky.png';
+import nightSky from '../assets/night-sky.gif';
 import cloudsPng from '../assets/clouds.png';
 import starsImg from '../assets/stars.png';
 import blue1 from '../assets/blue-1.PNG';

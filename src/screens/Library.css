@@ -12,7 +12,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 30px;
-  max-width: 1200px;
+  max-width: 1600px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -40,14 +40,19 @@
 }
 
 .library-container {
-  max-width: 1200px;
+  max-width: 1600px;
   margin: 0 auto;
+}
+
+/* Shared padding for elements using the blue cloud background */
+.blue-cloud-bg {
+  padding: 32px;
 }
 
 .empty-library {
   background: transparent;
   border-radius: 50px;
-  padding: 100px 60px;
+  padding: 120px 80px;
   text-align: center;
   width: 900px;
   min-height: 900px;
@@ -109,11 +114,12 @@
 .create-first-btn-text {
   position: absolute;
   color: #000051;
-  font-family: inherit;
-  font-size: 2rem;
+  font-family: 'Patrick Hand', 'Comic Sans MS', cursive, sans-serif;
+  font-size: 2.4rem;
   font-weight: bold;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4);
   pointer-events: none;
+  padding-bottom: 5px;
 }
 
 .create-first-btn:hover {
@@ -126,8 +132,8 @@
 
 .stories-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 28px;
 }
 
 .story-card {
@@ -135,23 +141,25 @@
   border-radius: 20px;
   overflow: hidden;
   transition: all 0.3s ease;
-  width: 400px;
+  width: 100%;
+  max-width: 520px;
+  padding: 28px;
 }
 
 .story-card:hover {
-  transform: translateY(-20px);
+  transform: translateY(-10px);
 }
 
 .story-image {
-  aspect-ratio: 16/9;
+  aspect-ratio: 2/1;
   overflow: hidden;
 }
 
 .story-thumbnail {
   transform: translate(0%, 15%);
-  width: 85%;
-  height: 85%;
-  border-radius: 25px;
+  width: 75%;
+  height: 75%;
+  border-radius: 20px;
   object-fit: cover;
   transition: transform 0.3s ease;
 }
@@ -164,8 +172,8 @@
   align-items: center;
   justify-content: center;
   background: transparent;
-  font-size: 3rem;
-  padding-top: 20px;
+  font-size: 2.2rem;
+  padding-top: 12px;
 }
 
 .story-thumbnail-placeholder-img {
@@ -175,48 +183,49 @@
 }
 
 .story-details {
-  padding: 20px;
+  padding: 12px 16px;
 }
 
 .story-title {
-  font-size: 2rem;
+  font-size: 1.35rem;
   color: #333;
-  margin-bottom: 10px;
+  margin-bottom: 4px;
   font-weight: bold;
+  line-height: 1.2;
 }
 
 .story-description {
   color: #666;
-  line-height: 1.5;
-  margin-bottom: 15px;
-  font-size: 1.3rem;
+  line-height: 1.25;
+  margin-bottom: 6px;
+  font-size: 0.95rem;
 }
 
 .story-meta {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
-  font-size: 0.85rem;
+  margin-bottom: 8px;
+  font-size: 0.75rem;
 }
 
 .story-date {
   color: #999;
-  font-size: 1rem;
+  font-size: 0.8rem;
 }
 
 .story-language {
   background: #f0f0f0;
   color: #666;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 1rem;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 0.8rem;
   text-transform: capitalize;
 }
 
 .story-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .read-btn {
@@ -243,7 +252,7 @@
   position: absolute;
   color: white;
   font-family: "Patrick Hand", "Comic Sans MS", cursive, sans-serif;
-  font-size: 1.5rem;
+  font-size: 1.1rem;
   font-weight: bold;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4);
   pointer-events: none;
@@ -296,7 +305,7 @@
   }
 
   .empty-library {
-    padding: 40px 20px;
+    padding: 60px 32px;
   }
 
   .empty-library-book-img {

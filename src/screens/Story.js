@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { generateWithTimestamps, clampSpeed } from '../services/elevenLabsService';
 import openBook from '../assets/open-book.png';
 import './Story.css';
-import nightSky from '../assets/night-sky.png';
+import nightSky from '../assets/night-sky.gif';
 import cloudsPng from '../assets/clouds.png';
+import blueScribble from '../assets/bluescribble.png';
 
 function getPagesFromStory(storyData) {
   if (storyData.pages && Array.isArray(storyData.pages) && storyData.pages.length > 0) {
@@ -308,28 +309,24 @@ const Story = () => {
   const playBtnLabel = isLoadingAudio
     ? 'Loading...'
     : isPlaying
-      ? <>&nbsp;&#9208;&#65039; Pause Story</>
-      : <>&nbsp;&#128266; Read Story Aloud</>;
+      ? <>Pause Story</>
+      : <>Read Story Aloud</>;
 
   return (
     <div className="story-screen" style={{ backgroundImage: `url(${nightSky})` }}>
       <div className="scrolling-clouds" style={{ backgroundImage: `url(${cloudsPng})` }} />
       <div className="story-header">
         <button className="back-btn" onClick={goBack}>&larr; Back</button>
-        <div className="story-header-info">
-          <h1>{storyData.title || 'Your Story'}</h1>
-          {storyData.description && (
-            <p className="story-header-description">{storyData.description}</p>
-          )}
-        </div>
-        <button className="done-btn" onClick={goToDone}>Done &check;</button>
+        <h1>{storyData.title || 'Your Story'}</h1>
+        <button className="done-btn" onClick={goToDone}>Done</button>
       </div>
 
       <div className="book-wrapper">
+        <div className="book-inner">
         <img src={openBook} alt="Book frame" className="book-frame" />
 
         <div className="book-pages">
-          <div className={`book-page left-page ${isFlipping && flipDirection === 'backward' ? 'flip-backward' : ''}`}>
+          <div className={`book-page left-page ${isFlipping && flipDirection.startsWith('backward') ? `flip-${flipDirection}` : ''}`}>
             <div className="page-content">
               {leftPage && (
                 <>
@@ -349,7 +346,7 @@ const Story = () => {
             </div>
           </div>
 
-          <div className={`book-page right-page ${isFlipping && flipDirection === 'forward' ? 'flip-forward' : ''}`}>
+          <div className={`book-page right-page ${isFlipping && flipDirection.startsWith('forward') ? `flip-${flipDirection}` : ''}`}>
             <div className="page-content">
               {rightPage ? (
                 <>
@@ -378,9 +375,10 @@ const Story = () => {
         {currentSpread < totalSpreads - 1 && (
           <button className="page-nav next-page" onClick={goToNextSpread}>&#8250;</button>
         )}
+        </div>
       </div>
 
-      <div className="story-controls">
+      <div className="story-controls" style={{ backgroundImage: `url(${blueScribble})` }}>
         <button
           className={playBtnClass}
           onClick={handlePlayPause}
@@ -391,7 +389,7 @@ const Story = () => {
 
         <div className="narrator-settings">
           <div className="setting-item">
-            <span className="setting-label">Speed</span>
+            <span className="setting-label">Speed:</span>
             <div className="speed-btn-group">
               {SPEED_OPTIONS.map(opt => (
                 <button

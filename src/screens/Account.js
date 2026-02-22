@@ -5,6 +5,10 @@ import apiService from '../services/apiService';
 import storyService from '../services/storyService';
 import './Account.css';
 import bgImage from '../assets/Jillian-BG.png';
+import cloudDrawBg from '../assets/blue-cloud-bg.png';
+import starsImg from '../assets/stars.png';
+import blue1Img from '../assets/blue-2.PNG';
+import redImg from '../assets/red.png';
 
 const MAX_GENERATIONS = 10;
 const WINDOW_MINUTES = 15;
@@ -65,11 +69,21 @@ const Account = () => {
 
   return (
     <div className="account-screen" style={{ backgroundImage: `url(${bgImage})` }}>
-      <div className="account-container">
+      <div
+        className="account-container"
+        style={{
+          backgroundImage: `url(${cloudDrawBg})`,
+          backgroundSize: '100% 100%',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      >
         <button className="account-back-btn" onClick={() => navigate('/upload')}>← Back</button>
 
         <div className="account-header">
-          <div className="account-avatar">{displayName.charAt(0).toUpperCase()}</div>
+          <div className="account-avatar">
+            <img src={starsImg} alt="Profile" className="account-avatar-img" />
+          </div>
           <h1>{displayName}</h1>
           <p className="account-email">{user.email}</p>
         </div>
@@ -91,10 +105,14 @@ const Account = () => {
 
         <div className="account-actions">
           <button className="account-logout-btn" onClick={handleLogout}>
-            Log Out
+            <img src={blue1Img} alt="" className="account-logout-img" />
+            <span className="account-logout-text">Log Out</span>
           </button>
           <button className="account-delete-btn" onClick={handleDeleteData} disabled={deleting}>
-            {deleting ? 'Deleting...' : 'Delete My Account & Data'}
+            <img src={redImg} alt="" className="account-delete-img" />
+            <span className="account-delete-text">
+              {deleting ? 'Deleting...' : 'Delete My Account & Data'}
+            </span>
           </button>
         </div>
       </div>

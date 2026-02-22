@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { generateStory } from '../services/geminiService';
 import storyService from '../services/storyService';
 import './Loading.css';
-import nightSky from '../assets/night-sky.png';
+import nightSky from '../assets/night-sky.gif';
 import cloudsPng from '../assets/clouds.png';
 
 const loadingMessages = [
@@ -157,7 +157,6 @@ const Loading = () => {
         </div>
 
         <div className="loading-details">
-          <p>We're creating a personalized story just for you!</p>
         </div>
       </div>
     </div>
