@@ -6,6 +6,7 @@ import bgImage from '../assets/Jillian-BG.png';
 import libraryIcon from '../assets/bluescribble.png';
 import drawingImg from '../assets/drawing.PNG';
 import cloudDrawBg from '../assets/blue-cloud-bg.png';
+import createImg from '../assets/create.png';
 
 const Upload = () => {
   const [image, setImage] = useState(null);
@@ -154,7 +155,8 @@ const Upload = () => {
           onClick={handleSubmit}
           disabled={!image || !description.trim()}
         >
-          Create My Story
+          <img src={createImg} alt="" className="generate-btn-img" />
+          <span className="generate-btn-text">Create My Story</span>
         </button>
       </div>
 

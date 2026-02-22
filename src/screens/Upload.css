@@ -232,28 +232,46 @@
 }
 
 .generate-btn {
-  font-family: inherit;
-  background: #ff6b6b;
-  color: white;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
   border: none;
-  padding: 15px 40px;
-  font-size: 1.55rem;
-  font-weight: bold;
-  border-radius: 30px;
+  padding: 0;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 5px 15px rgba(238, 90, 36, 0.4);
+}
+
+.generate-btn-img {
+  display: block;
+  width: 280px;
+  height: auto;
+  transition: transform 0.3s ease;
+}
+
+.generate-btn-text {
+  position: absolute;
+  color: #000051;
+  font-family: inherit;
+  font-size: 1.55rem;
+  font-weight: bold;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
 }
 
 .generate-btn:hover:not(:disabled) {
   transform: translateY(-3px);
-  box-shadow: 0 8px 25px rgba(238, 90, 36, 0.6);
+}
+
+.generate-btn:hover:not(:disabled) .generate-btn-img {
+  transform: scale(1.05);
 }
 
 .generate-btn:disabled {
-  background: #ccc;
   cursor: not-allowed;
-  box-shadow: none;
+  opacity: 0.6;
+  filter: grayscale(0.5);
 }
 
 @media (max-width: 768px) {
