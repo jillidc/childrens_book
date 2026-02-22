@@ -2,27 +2,34 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const Story = require('../models/Story');
+const { authMiddleware } = require('../middleware/auth');
 
 // Validation schemas
 const createStorySchema = Joi.object({
   userId: Joi.string().uuid().optional().allow(null),
   title: Joi.string().min(1).max(255).optional(),
   description: Joi.string().min(1).max(2000).required(),
-  storyText: Joi.string().min(1).max(10000).required(),
+  storyText: Joi.string().min(1).max(200000).required(),
   language: Joi.string().valid('english', 'spanish', 'french', 'chinese').default('english'),
   translationLanguage: Joi.string().valid('english', 'spanish', 'french', 'chinese').optional().allow(null),
-  imageUrl: Joi.string().uri().optional().allow(null),
+  imageUrl: Joi.string().max(10000).optional().allow(null, ''),
   imageFileName: Joi.string().max(255).optional().allow(null),
-  audioUrl: Joi.string().uri().optional().allow(null)
+  audioUrl: Joi.string().uri().optional().allow(null),
+  sourceType: Joi.string().valid('drawing', 'pdf_book').optional().allow(null),
+  sourceFileKey: Joi.string().max(512).optional().allow(null),
+  generatedImageUrl: Joi.string().uri().optional().allow(null)
 });
 
 const updateStorySchema = Joi.object({
   title: Joi.string().min(1).max(255).optional(),
   description: Joi.string().min(1).max(2000).optional(),
-  storyText: Joi.string().min(1).max(10000).optional(),
+  storyText: Joi.string().min(1).max(200000).optional(),
   language: Joi.string().valid('english', 'spanish', 'french', 'chinese').optional(),
   translationLanguage: Joi.string().valid('english', 'spanish', 'french', 'chinese').optional().allow(null),
-  audioUrl: Joi.string().uri().optional().allow(null)
+  audioUrl: Joi.string().uri().optional().allow(null),
+  sourceType: Joi.string().valid('drawing', 'pdf_book').optional().allow(null),
+  sourceFileKey: Joi.string().max(512).optional().allow(null),
+  generatedImageUrl: Joi.string().uri().optional().allow(null)
 });
 
 // GET /api/stories - Get all stories with pagination
@@ -92,8 +99,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /api/stories - Create new story
-router.post('/', async (req, res) => {
+// POST /api/stories - Create new story (auth required)
+router.post('/', authMiddleware, async (req, res) => {
   try {
     const { error, value } = createStorySchema.validate(req.body);
 
@@ -104,6 +111,7 @@ router.post('/', async (req, res) => {
       });
     }
 
+    value.userId = req.user.id;
     const story = new Story(value);
     await story.save();
 
@@ -121,8 +129,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT /api/stories/:id - Update story
-router.put('/:id', async (req, res) => {
+// PUT /api/stories/:id - Update story (auth required, owner only)
+router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { error, value } = updateStorySchema.validate(req.body);
@@ -143,7 +151,10 @@ router.put('/:id', async (req, res) => {
       });
     }
 
-    // Update story properties
+    if (story.userId && story.userId !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Not authorized to update this story' });
+    }
+
     Object.assign(story, value);
     await story.update();
 
@@ -161,8 +172,8 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/stories/:id - Delete story
-router.delete('/:id', async (req, res) => {
+// DELETE /api/stories/:id - Delete story (auth required, owner only)
+router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -173,6 +184,10 @@ router.delete('/:id', async (req, res) => {
         success: false,
         error: 'Story not found'
       });
+    }
+
+    if (story.userId && story.userId !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Not authorized to delete this story' });
     }
 
     await Story.deleteById(id);

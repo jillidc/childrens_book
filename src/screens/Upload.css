@@ -19,15 +19,36 @@
   text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
 }
 
-.library-footer {
+.upload-footer-links {
   margin-top: auto;
   padding: 20px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.library-footer,
+.book-conversion-link {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.library-footer:hover,
+.book-conversion-link:hover {
+  transform: scale(1.05);
+}
+
+.library-footer {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
+}
+
+.book-conversion-link .library-btn-text {
+  position: static;
 }
 
 .library-footer:hover {
@@ -55,13 +76,6 @@
   width: 100%;
   border-radius: 20px;
   padding: 100px;
-}
-
-.library-footer {
-  margin-top: auto;
-  padding: 20px 0;
-  display: flex;
-  justify-content: center;
 }
 
 .image-upload {

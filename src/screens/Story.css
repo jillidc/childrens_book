@@ -1,3 +1,7 @@
+/* ─────────────────────────────────────────────────────────
+   Story screen – single-column book layout
+───────────────────────────────────────────────────────── */
+
 .story-screen {
   min-height: 100vh;
   padding: 20px;
@@ -12,6 +16,7 @@
   overflow: hidden;
 }
 
+/* ── Header ── */
 .story-header {
   display: flex;
   justify-content: space-between;
@@ -23,18 +28,20 @@
   z-index: 2;
 }
 
-.back-btn, .done-btn {
-  background: rgba(255,255,255,0.2);
+.back-btn,
+.done-btn {
+  background: rgba(255, 255, 255, 0.2);
   color: white;
   border: 2px solid white;
   padding: 10px 20px;
   border-radius: 25px;
   cursor: pointer;
   font-weight: bold;
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
 }
 
-.back-btn:hover, .done-btn:hover {
+.back-btn:hover,
+.done-btn:hover {
   background: white;
   color: #667eea;
 }
@@ -225,7 +232,7 @@
   padding: 12px 25px;
   font-size: 1rem;
   font-weight: bold;
-  border-radius: 25px;
+  border-radius: 28px;
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 5px 15px rgba(6, 214, 160, 0.4);
@@ -233,7 +240,7 @@
 
 .play-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(6, 214, 160, 0.6);
+  box-shadow: 0 8px 24px rgba(6, 214, 160, 0.55);
 }
 
 .play-btn:disabled {
@@ -244,6 +251,15 @@
 
 .play-btn.playing {
   background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+  box-shadow: 0 5px 16px rgba(238, 90, 36, 0.38);
+}
+
+/* ── Narrator settings row ── */
+.narrator-settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: center;
 }
 
 .language-tag {
@@ -269,13 +285,16 @@
     line-height: 1.5;
   }
 
-  .story-header h1 {
-    font-size: 1.8rem;
+  .story-text-block {
+    padding: 28px 24px 20px;
   }
 
-  .back-btn, .done-btn {
-    padding: 8px 15px;
-    font-size: 0.9rem;
+  .story-image-block {
+    padding: 0 24px 24px;
+  }
+
+  .story-controls {
+    padding: 18px 24px 24px;
   }
 
   .page-nav {
