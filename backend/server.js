@@ -30,13 +30,18 @@ const storyGenLimiter = makeStrictLimiter(15);
 const ttsLimiter      = makeStrictLimiter(60);
 const aiLimiter       = makeStrictLimiter(20);
 
-// CORS configuration — FRONTEND_URL can be a single URL or comma-separated (e.g. Vercel prod + preview)
+// CORS — FRONTEND_URL (comma-separated) + any *.vercel.app so preview deploys work
 const frontendUrls = (process.env.FRONTEND_URL || 'http://localhost:3000')
   .split(',')
   .map(s => s.trim())
   .filter(Boolean);
 const corsOptions = {
-  origin: frontendUrls.length > 1 ? frontendUrls : frontendUrls[0],
+  origin(origin, callback) {
+    if (!origin) return callback(null, true); // same-origin or non-browser
+    if (frontendUrls.includes(origin)) return callback(null, true);
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
+    callback(null, false);
+  },
   credentials: true,
   optionsSuccessStatus: 200
 };
@@ -91,6 +96,6 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Draw My Story API server running on port ${PORT}`);
-  console.log(`📱 Frontend URL: ${corsOptions.origin}`);
+  console.log(`📱 CORS: ${frontendUrls.join(', ') || 'none'}, *.vercel.app`);
   console.log(`🏥 Health check: http://localhost:${PORT}/api/health`);
 });
