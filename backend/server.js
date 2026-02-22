@@ -18,6 +18,13 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+// Stricter rate limit for expensive / API-heavy routes
+const strictLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: 'Too many requests to this endpoint, please try again later.'
+});
+
 // CORS configuration
 const corsOptions = {
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
@@ -31,11 +38,16 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Routes
+app.use('/api/auth', require('./routes/auth'));
 app.use('/api/stories', require('./routes/stories'));
-app.use('/api/generate-story', require('./routes/generateStory'));
-app.use('/api/text-to-speech', require('./routes/textToSpeech'));
+app.use('/api/generate-story', strictLimiter, require('./routes/generateStory'));
+app.use('/api/text-to-speech', strictLimiter, require('./routes/textToSpeech'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/pdf', strictLimiter, require('./routes/pdf'));
+app.use('/api/describe-image', strictLimiter, require('./routes/describeImage'));
+app.use('/api/translate', strictLimiter, require('./routes/translate'));
+app.use('/api/generate-image', strictLimiter, require('./routes/imageGeneration'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

@@ -48,6 +48,39 @@ class StorageService {
     }
   }
 
+  // Upload PDF to pdfs/ folder
+  async uploadPdf(fileBuffer, fileName) {
+    const name = fileName || `document-${Date.now()}.pdf`;
+    return this.uploadFile(fileBuffer, name, 'application/pdf', 'pdfs');
+  }
+
+  // Upload generated image (e.g. from AI) to generated/ folder
+  async uploadGeneratedImage(fileBuffer, fileName) {
+    const name = fileName || `generated-${Date.now()}-${Math.random().toString(36).substring(7)}.png`;
+    return this.uploadFile(fileBuffer, name, 'image/png', 'generated');
+  }
+
+  // Upload audio (e.g. TTS) to audio/ folder
+  async uploadAudio(fileBuffer, fileName) {
+    const name = fileName || `audio-${Date.now()}.mp3`;
+    return this.uploadFile(fileBuffer, name, 'audio/mpeg', 'audio');
+  }
+
+  // Get file body as buffer (for PDF parse by key, etc.)
+  async getFile(key) {
+    const params = { Bucket: this.bucketName, Key: key };
+    try {
+      const result = await this.s3.getObject(params).promise();
+      return result.Body;
+    } catch (error) {
+      if (error.statusCode === 404) {
+        return null;
+      }
+      console.error('Error getting file:', error);
+      throw new Error('Failed to get file from storage');
+    }
+  }
+
   // Upload image with processing
   async uploadImage(fileBuffer, originalName, options = {}) {
     try {
