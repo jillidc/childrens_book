@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import storyService from '../services/storyService';
 import './Upload.css';
 import bgImage from '../assets/Jillian-BG.png';
@@ -8,12 +9,30 @@ import drawingImg from '../assets/drawing.PNG';
 import cloudDrawBg from '../assets/blue-cloud-bg.png';
 import createImg from '../assets/create.png';
 
+function createThumbnail(dataUrl, maxSize = 200) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.6));
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
 const Upload = () => {
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [description, setDescription] = useState('');
   const [language, setLanguage] = useState('english');
   const [translationLanguage, setTranslationLanguage] = useState('');
+  const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const handleImageUpload = (event) => {
@@ -28,42 +47,34 @@ const Upload = () => {
 
   const handleSubmit = async () => {
     if (image && description.trim()) {
+      const thumbnail = await createThumbnail(imagePreview);
+
+      let remoteUrl = null;
+      let fileName = null;
       try {
-        // Upload image to backend first
         const uploadResult = await storyService.uploadImage(image, {
           maxWidth: 1200,
           quality: 85
         });
-
-        const storyData = {
-          description,
-          language,
-          translationLanguage,
-          imageUrl: uploadResult.url,
-          imageFileName: uploadResult.originalName
-        };
-
-        localStorage.setItem('currentStory', JSON.stringify({
-          ...storyData,
-          imagePreview: uploadResult.isLocal ? uploadResult.url : imagePreview
-        }));
-
-        navigate('/loading');
+        if (!uploadResult.isLocal) {
+          remoteUrl = uploadResult.url;
+          fileName = uploadResult.originalName;
+        }
       } catch (error) {
-        console.error('Error uploading image:', error);
-
-        // Fallback to local storage approach
-        const storyData = {
-          description,
-          language,
-          translationLanguage
-        };
-        localStorage.setItem('currentStory', JSON.stringify({
-          ...storyData,
-          imagePreview
-        }));
-        navigate('/loading');
+        console.warn('Image upload failed, will use data URL for generation:', error.message);
       }
+
+      const storyData = {
+        description,
+        language,
+        translationLanguage,
+        imageUrl: remoteUrl || null,
+        imageFileName: fileName || image.name,
+        imagePreview: thumbnail || remoteUrl || null
+      };
+
+      localStorage.setItem('currentStory', JSON.stringify(storyData));
+      navigate('/loading', { state: { imageDataUrl: remoteUrl || imagePreview } });
     }
   };
 
@@ -74,7 +85,15 @@ const Upload = () => {
   return (
     <div className="upload-screen" style={{ backgroundImage: `url(${bgImage})` }}>
       <div className="header">
+        {isAuthenticated && (
+          <button className="account-btn" onClick={() => navigate('/account')} title="Account Settings">
+            <span className="account-icon">&#9881;&#65039;</span>
+          </button>
+        )}
         <h1>Draw My Story</h1>
+        {isAuthenticated && user && (
+          <p className="greeting">Hi, {user.username || user.email.split('@')[0]}!</p>
+        )}
       </div>
 
       <div
@@ -160,9 +179,11 @@ const Upload = () => {
         </button>
       </div>
 
-      <div className="library-footer" onClick={goToLibrary}>
-        <img src={libraryIcon} alt="My Library" className="library-btn-img" />
-        <span className="library-btn-text">My Library</span>
+      <div className="upload-footer-links">
+        <div className="library-footer" onClick={goToLibrary}>
+          <img src={libraryIcon} alt="My Library" className="library-btn-img" />
+          <span className="library-btn-text">My Library</span>
+        </div>
       </div>
     </div>
   );

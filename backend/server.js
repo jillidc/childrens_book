@@ -10,13 +10,25 @@ const PORT = process.env.PORT || 5000;
 // Security middleware
 app.use(helmet());
 
-// Rate limiting
+// Rate limiting — JSON responses so the frontend can parse them
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: { error: 'Too many requests from this IP, please try again later.' }
 });
 app.use('/api/', limiter);
+
+// Per-route-group rate limiters (separate counters so TTS doesn't eat into story gen quota)
+function makeStrictLimiter(max) {
+  return rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max,
+    message: { error: 'Too many requests to this endpoint, please try again later.' }
+  });
+}
+const storyGenLimiter = makeStrictLimiter(15);
+const ttsLimiter      = makeStrictLimiter(60);
+const aiLimiter       = makeStrictLimiter(20);
 
 // CORS configuration
 const corsOptions = {
@@ -27,15 +39,21 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Routes
+app.use('/api/auth', require('./routes/auth'));
 app.use('/api/stories', require('./routes/stories'));
-app.use('/api/generate-story', require('./routes/generateStory'));
-app.use('/api/text-to-speech', require('./routes/textToSpeech'));
+app.use('/api/generate-story', storyGenLimiter, require('./routes/generateStory'));
+app.use('/api/text-to-speech', ttsLimiter, require('./routes/textToSpeech'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/pdf', aiLimiter, require('./routes/pdf'));
+app.use('/api/describe-image', aiLimiter, require('./routes/describeImage'));
+app.use('/api/translate', aiLimiter, require('./routes/translate'));
+app.use('/api/generate-image', aiLimiter, require('./routes/imageGeneration'));
+app.use('/api/book-conversion', require('./routes/bookConversion'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

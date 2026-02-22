@@ -3,15 +3,21 @@ const router = express.Router();
 const Joi = require('joi');
 const axios = require('axios');
 
+// Rachel — warm, calm, soothing female voice (ideal for children's storytelling)
+const DEFAULT_VOICE_ID   = '21m00Tcm4TlvDq8ikWAM';
+// eleven_flash_v2_5 — ultra-low latency (~75 ms), good quality, fast warm-up
+const DEFAULT_MODEL_ID   = 'eleven_flash_v2_5';
+
 // Validation schema
 const textToSpeechSchema = Joi.object({
   text: Joi.string().min(1).max(10000).required(),
-  voiceId: Joi.string().optional().default('pNInz6obpgDQGcFmaJgB'), // Default: Adam voice
-  modelId: Joi.string().optional().default('eleven_monolingual_v1'),
-  stability: Joi.number().min(0).max(1).optional().default(0.5),
-  similarityBoost: Joi.number().min(0).max(1).optional().default(0.8),
-  style: Joi.number().min(0).max(1).optional().default(0.2),
-  useSpeakerBoost: Joi.boolean().optional().default(true)
+  voiceId: Joi.string().optional().default(DEFAULT_VOICE_ID),
+  modelId: Joi.string().optional().default(DEFAULT_MODEL_ID),
+  stability: Joi.number().min(0).max(1).optional().default(0.65),
+  similarityBoost: Joi.number().min(0).max(1).optional().default(0.75),
+  style: Joi.number().min(0).max(1).optional().default(0.3),
+  useSpeakerBoost: Joi.boolean().optional().default(true),
+  speed: Joi.number().min(0.7).max(1.2).optional().default(1.0)
 });
 
 // ElevenLabs API configuration
@@ -25,25 +31,27 @@ const generateAudioWithElevenLabs = async (text, options = {}) => {
   }
 
   const {
-    voiceId = 'pNInz6obpgDQGcFmaJgB',
-    modelId = 'eleven_monolingual_v1',
-    stability = 0.5,
-    similarityBoost = 0.8,
-    style = 0.2,
-    useSpeakerBoost = true
+    voiceId = DEFAULT_VOICE_ID,
+    modelId = DEFAULT_MODEL_ID,
+    stability = 0.65,
+    similarityBoost = 0.75,
+    style = 0.3,
+    useSpeakerBoost = true,
+    speed = 1.0
   } = options;
 
   try {
     const response = await axios.post(
       `${ELEVENLABS_API_URL}/text-to-speech/${voiceId}`,
       {
-        text: text,
+        text,
         model_id: modelId,
         voice_settings: {
-          stability: stability,
+          stability,
           similarity_boost: similarityBoost,
-          style: style,
-          use_speaker_boost: useSpeakerBoost
+          style,
+          use_speaker_boost: useSpeakerBoost,
+          speed
         }
       },
       {
@@ -53,7 +61,7 @@ const generateAudioWithElevenLabs = async (text, options = {}) => {
           'xi-api-key': apiKey,
         },
         responseType: 'arraybuffer',
-        timeout: 60000 // 60 second timeout for longer texts
+        timeout: 60000
       }
     );
 
@@ -74,6 +82,136 @@ const generateAudioWithElevenLabs = async (text, options = {}) => {
   }
 };
 
+// Convert character-level ElevenLabs alignment to word-level timing
+const buildWordTimings = (originalText, alignment) => {
+  const { characters, character_start_times_seconds, character_end_times_seconds } = alignment;
+  if (!characters?.length) return [];
+
+  const wordTimings = [];
+  const wordRegex = /\S+/g;
+  let match;
+
+  while ((match = wordRegex.exec(originalText)) !== null) {
+    const charStart = match.index;
+    const charEnd   = charStart + match[0].length;
+
+    // Alignment positions track ~1-to-1 with original text characters
+    const aStart = Math.min(charStart, character_start_times_seconds.length - 1);
+    const aEnd   = Math.min(charEnd - 1, character_end_times_seconds.length - 1);
+
+    wordTimings.push({
+      word: match[0],
+      charStart,
+      charEnd,
+      startTime: character_start_times_seconds[aStart] ?? 0,
+      endTime:   character_end_times_seconds[aEnd]   ?? 0
+    });
+  }
+
+  return wordTimings;
+};
+
+// Generate audio WITH character-level timing for word highlighting
+const generateAudioWithTimestamps = async (text, options = {}) => {
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('ElevenLabs API key not configured');
+  }
+
+  const {
+    voiceId = DEFAULT_VOICE_ID,
+    modelId = DEFAULT_MODEL_ID,
+    stability = 0.65,
+    similarityBoost = 0.75,
+    style = 0.3,
+    useSpeakerBoost = true,
+    speed = 1.0
+  } = options;
+
+  try {
+    const response = await axios.post(
+      `${ELEVENLABS_API_URL}/text-to-speech/${voiceId}/with-timestamps`,
+      {
+        text,
+        model_id: modelId,
+        voice_settings: {
+          stability,
+          similarity_boost: similarityBoost,
+          style,
+          use_speaker_boost: useSpeakerBoost,
+          speed
+        }
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'xi-api-key': apiKey,
+        },
+        timeout: 60000
+      }
+    );
+
+    const { audio_base64, alignment } = response.data;
+
+    if (!audio_base64 || !alignment) {
+      throw new Error('ElevenLabs returned incomplete timestamp response');
+    }
+
+    const wordTimings = buildWordTimings(text, alignment);
+
+    return {
+      audioBase64: audio_base64,
+      mimeType: 'audio/mpeg',
+      wordTimings
+    };
+
+  } catch (error) {
+    console.error('ElevenLabs with-timestamps API Error:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data
+        ? JSON.stringify(error.response.data).slice(0, 300)
+        : 'No data',
+      message: error.message
+    });
+
+    throw new Error('Failed to generate audio with timestamps from ElevenLabs');
+  }
+};
+
+// POST /api/text-to-speech/with-timestamps - Generate audio + word-level timing for highlighting
+router.post('/with-timestamps', async (req, res) => {
+  try {
+    const { error, value } = textToSpeechSchema.validate(req.body);
+
+    if (error) {
+      return res.status(400).json({ success: false, error: error.details[0].message });
+    }
+
+    const { text, ...options } = value;
+
+    console.log(`Generating timestamped audio: "${text.substring(0, 80)}..."`);
+
+    const result = await generateAudioWithTimestamps(text, options);
+
+    return res.json({
+      success: true,
+      audioBase64: result.audioBase64,
+      mimeType: result.mimeType,
+      wordTimings: result.wordTimings
+    });
+
+  } catch (err) {
+    console.error('Error in /with-timestamps:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to generate audio with timestamps.',
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  }
+});
+
 // GET /api/text-to-speech/voices - Get available voices
 router.get('/voices', async (req, res) => {
   try {
@@ -87,9 +225,7 @@ router.get('/voices', async (req, res) => {
     }
 
     const response = await axios.get(`${ELEVENLABS_API_URL}/voices`, {
-      headers: {
-        'xi-api-key': apiKey,
-      }
+      headers: { 'xi-api-key': apiKey }
     });
 
     // Filter for child-friendly voices
@@ -110,7 +246,7 @@ router.get('/voices', async (req, res) => {
       data: {
         recommended: childFriendlyVoices,
         all: response.data.voices,
-        defaultVoice: 'pNInz6obpgDQGcFmaJgB' // Adam
+        defaultVoice: DEFAULT_VOICE_ID
       }
     });
 
@@ -141,22 +277,24 @@ router.post('/generate', async (req, res) => {
 
     const audioResult = await generateAudioWithElevenLabs(text, options);
 
-    // Set headers for audio response
     res.set({
       'Content-Type': audioResult.contentType,
       'Content-Length': audioResult.audioData.length,
-      'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+      'Cache-Control': 'public, max-age=3600',
       'Access-Control-Allow-Origin': '*'
     });
-
     res.send(audioResult.audioData);
-
   } catch (error) {
     console.error('Error generating audio:', error);
+    const message = error.response?.data
+      ? (typeof error.response.data === 'string'
+          ? error.response.data
+          : error.response.data?.detail?.message || JSON.stringify(error.response.data))
+      : error.message;
     res.status(500).json({
       success: false,
       error: 'Failed to generate audio. Please try again.',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? message : undefined
     });
   }
 });
@@ -185,7 +323,6 @@ router.post('/stream', async (req, res) => {
 
     console.log(`Streaming audio for text: ${text.substring(0, 100)}...`);
 
-    // Set headers for streaming
     res.set({
       'Content-Type': 'audio/mpeg',
       'Transfer-Encoding': 'chunked',
@@ -193,11 +330,11 @@ router.post('/stream', async (req, res) => {
       'Access-Control-Allow-Origin': '*'
     });
 
-    // Make streaming request to ElevenLabs
+    const axios = require('axios');
     const response = await axios.post(
       `${ELEVENLABS_API_URL}/text-to-speech/${options.voiceId}/stream`,
       {
-        text: text,
+        text: String(text),
         model_id: options.modelId,
         voice_settings: {
           stability: options.stability,
@@ -208,24 +345,27 @@ router.post('/stream', async (req, res) => {
       },
       {
         headers: {
-          'Accept': 'audio/mpeg',
+          Accept: 'audio/mpeg',
           'Content-Type': 'application/json',
-          'xi-api-key': apiKey,
+          'xi-api-key': apiKey
         },
         responseType: 'stream'
       }
     );
 
-    // Pipe the response stream to the client
     response.data.pipe(res);
-
   } catch (error) {
     console.error('Error streaming audio:', error);
     if (!res.headersSent) {
+      const message = error.response?.data
+        ? (typeof error.response.data === 'string'
+            ? error.response.data
+            : error.response.data?.detail?.message || JSON.stringify(error.response.data))
+        : error.message;
       res.status(500).json({
         success: false,
         error: 'Failed to stream audio. Please try again.',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        details: process.env.NODE_ENV === 'development' ? message : undefined
       });
     }
   }

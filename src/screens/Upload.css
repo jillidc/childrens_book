@@ -11,6 +11,7 @@
 .header {
   text-align: center;
   margin-bottom: 1px;
+  position: relative;
 }
 
 .header h1 {
@@ -19,15 +20,57 @@
   text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
 }
 
-.library-footer {
+.greeting {
+  color: white;
+  font-size: 1.4rem;
+  margin: 0;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+  font-weight: 600;
+}
+
+.account-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.25);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+  z-index: 5;
+}
+
+.account-btn:hover {
+  background: rgba(255, 255, 255, 0.45);
+  transform: scale(1.1);
+}
+
+.account-icon {
+  font-size: 1.5rem;
+}
+
+.upload-footer-links {
   margin-top: auto;
   padding: 20px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.library-footer {
+  cursor: pointer;
+  transition: all 0.3s ease;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
 }
 
 .library-footer:hover {
@@ -36,7 +79,7 @@
 
 .library-btn-img {
   height: 100px;
-  width: 1000px;
+  width: 10000px;
   max-width: 60%;
 }
 
@@ -55,13 +98,6 @@
   width: 100%;
   border-radius: 20px;
   padding: 100px 100px 50px 100px;
-}
-
-.library-footer {
-  margin-top: auto;
-  padding: 20px 0;
-  display: flex;
-  justify-content: center;
 }
 
 .image-upload {
@@ -235,6 +271,7 @@
   position: relative;
   display: inline-flex;
   align-items: center;
+  font-family: 'Patrick Hand', 'Comic Sans MS', cursive, sans-serif;
   justify-content: center;
   background: none;
   border: none;

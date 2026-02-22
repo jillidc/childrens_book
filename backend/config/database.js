@@ -25,6 +25,7 @@ class SnowflakeDB {
 
       this.connection.connect((err, conn) => {
         if (err) {
+          this.connection = null;
           console.error('Unable to connect to Snowflake:', err.message);
           reject(err);
         } else {

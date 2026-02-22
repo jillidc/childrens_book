@@ -71,6 +71,13 @@ Or with sample data:
 npm run init-db-with-samples
 ```
 
+**Existing databases:** If you already had tables before auth or story columns were added, run migrations once:
+```bash
+node scripts/migrateAddPasswordHash.js   # adds users.password_hash
+node scripts/migrateStoryColumns.js      # adds stories.source_type, source_file_key, generated_image_url
+node scripts/migrateDropWallet.js        # drops users.wallet_address (after removing Solana)
+```
+
 ### 4. Start Development Server
 ```bash
 npm run dev
@@ -82,6 +89,13 @@ The API will be available at `http://localhost:5000`
 
 ### Health Check
 - `GET /api/health` - Server status
+
+### Authentication (no auth required for these)
+- `POST /api/auth/register` - Register with `{ email, password, username? }`; returns `{ user, token }`
+- `POST /api/auth/login` - Login with `{ email, password }`; returns `{ user, token }`
+- `GET /api/auth/me` - Current user (requires `Authorization: Bearer <token>`)
+
+**Protected routes** (require `Authorization: Bearer <token>` in header): story create/update/delete, upload image/pdf/audio, PDF parse.
 
 ### Story Management
 - `GET /api/stories` - List all stories (with pagination)
@@ -98,17 +112,24 @@ The API will be available at `http://localhost:5000`
 - `POST /api/text-to-speech/generate` - Generate audio from text
 - `POST /api/text-to-speech/stream` - Stream audio generation
 
-### File Upload
+### File Upload (image/pdf/audio require auth)
 - `POST /api/upload/image` - Upload single image
 - `POST /api/upload/multiple` - Upload multiple images
+- `POST /api/upload/pdf` - Upload PDF
+- `POST /api/upload/audio` - Upload audio (e.g. TTS)
 - `DELETE /api/upload/:key` - Delete uploaded file
 - `GET /api/upload/stats` - Storage statistics
 - `GET /api/upload/images` - List uploaded images
 
+### PDF & AI
+- `POST /api/pdf/parse` - Parse uploaded PDF (multipart `pdf`); returns `{ pages, fullText, numPages }` (auth required)
+- `POST /api/describe-image` - Describe drawing image for story (multipart `image`); returns `{ description }`
+- `POST /api/translate` - Translate text: `{ text, targetLanguage, sourceLanguage? }` → `{ translatedText }`
+- `POST /api/generate-image` - Generate image from prompt: `{ prompt, style? }` → `{ imageUrl, key }`
+
 ### User Management
 - `POST /api/users` - Create/find user
 - `GET /api/users/:id` - Get user by ID
-- `GET /api/users/wallet/:address` - Get user by wallet address
 - `PUT /api/users/:id` - Update user
 - `DELETE /api/users/:id` - Delete user
 
@@ -137,18 +158,20 @@ Response:
 }
 ```
 
-### Upload Image
+### Upload Image (requires auth)
 ```bash
 curl -X POST http://localhost:5000/api/upload/image \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -F "image=@drawing.jpg" \
   -F "maxWidth=800" \
   -F "quality=90"
 ```
 
-### Create Story
+### Create Story (requires auth)
 ```bash
 curl -X POST http://localhost:5000/api/stories \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
     "title": "My Dragon Story",
     "description": "A friendly dragon playing with butterflies",
@@ -164,9 +187,9 @@ curl -X POST http://localhost:5000/api/stories \
 ```sql
 CREATE TABLE users (
   id VARCHAR(36) PRIMARY KEY,
-  wallet_address VARCHAR(255) UNIQUE,
   username VARCHAR(100),
   email VARCHAR(255),
+  password_hash VARCHAR(255),
   created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
   updated_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
 );
@@ -185,6 +208,9 @@ CREATE TABLE stories (
   image_url VARCHAR(512),
   image_file_name VARCHAR(255),
   audio_url VARCHAR(512),
+  source_type VARCHAR(50),
+  source_file_key VARCHAR(512),
+  generated_image_url VARCHAR(512),
   created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
   updated_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
   FOREIGN KEY (user_id) REFERENCES users(id)
@@ -195,6 +221,9 @@ CREATE TABLE stories (
 
 ### Environment Variables
 All sensitive configuration is handled through environment variables. See `.env.example` for required variables.
+
+- **JWT_SECRET** – Required for auth; set a long random string (e.g. `openssl rand -hex 32`).
+- **GEMINI_API_KEY** – Used for story generation, image description, translation, and (if enabled) image generation (Imagen).
 
 ### API Rate Limits
 - Default: 100 requests per 15 minutes per IP
@@ -228,6 +257,45 @@ All sensitive configuration is handled through environment variables. See `.env.
 - `npm run test` - Run tests
 - `npm run init-db` - Initialize database tables
 - `npm run init-db-with-samples` - Initialize with sample data
+- `node scripts/migrateAddPasswordHash.js` - Add `password_hash` to existing users table
+- `node scripts/migrateStoryColumns.js` - Add story columns (source_type, source_file_key, generated_image_url)
+- `node scripts/migrateDropWallet.js` - Drop `wallet_address` from users (run after removing Solana)
+
+### Testing without frontend
+
+**Option 1 – Run the smoke test script** (with backend running in another terminal):
+```bash
+npm run dev   # in one terminal
+node scripts/test-api.js   # in another
+```
+This hits health, register, login, /me, create story, list stories, and translate.
+
+**Option 2 – curl from terminal** (replace `YOUR_TOKEN` after register/login):
+```bash
+# Health
+curl -s http://localhost:5000/api/health | jq
+
+# Register
+curl -s -X POST http://localhost:5000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","password":"yourpassword","username":"You"}' | jq
+
+# Login (copy token from response)
+curl -s -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","password":"yourpassword"}' | jq
+
+# Current user (use token from login)
+curl -s http://localhost:5000/api/auth/me \
+  -H "Authorization: Bearer YOUR_TOKEN" | jq
+
+# Create story (protected)
+curl -s -X POST http://localhost:5000/api/stories \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{"title":"My Story","description":"A dragon","storyText":"Once upon a time...","language":"english"}' | jq
+```
+Use your backend port if different (e.g. 5001). `jq` is optional (pretty-prints JSON).
 
 ### Testing
 ```bash
@@ -268,6 +336,14 @@ The project follows standard Node.js conventions with:
 3. Create new Space for image storage
 4. Generate access keys in API section
 5. Add credentials to `.env`
+
+## Frontend: Using Auth
+
+1. **Register or login** – `POST /api/auth/register` or `POST /api/auth/login` with `{ email, password }`. Response includes `data.token`.
+2. **Send token on protected requests** – Add header: `Authorization: Bearer <your-token>`.
+3. **Current user** – `GET /api/auth/me` with the same header returns the logged-in user.
+
+Without a valid token, protected routes (create/update/delete story, upload image/pdf/audio, PDF parse) return 401.
 
 ## Support
 

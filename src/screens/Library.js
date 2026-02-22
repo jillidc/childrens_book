@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import storyService from '../services/storyService';
 import './Library.css';
 import bgImage from '../assets/Jillian-BG.png';
@@ -7,22 +8,35 @@ import bookPjImage from '../assets/book-PJ.PNG';
 import createImg from '../assets/create.png';
 import cloudDrawBg from '../assets/blue-cloud-bg.png';
 import blue1Img from '../assets/blue-1.PNG';
+import trashImg from '../assets/trash.PNG';
+
+function getCoverImage(story) {
+  if (story.imagePreview || story.imageUrl) return story.imagePreview || story.imageUrl;
+  try {
+    const parsed = JSON.parse(story.storyText);
+    if (parsed?.version === 2 && parsed.pages?.[0]?.imageUrl) {
+      return parsed.pages[0].imageUrl;
+    }
+  } catch (_) {}
+  return null;
+}
 
 const Library = () => {
   const [stories, setStories] = useState([]);
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     loadStories();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const loadStories = async () => {
     try {
-      const result = await storyService.getAllStories();
+      const result = await storyService.getAllStories(user?.id || null);
       setStories(result.stories);
     } catch (error) {
       console.error('Error loading stories:', error);
-      // Fallback to localStorage
       const userStories = JSON.parse(localStorage.getItem('userStories') || '[]');
       setStories(userStories);
     }
@@ -109,16 +123,22 @@ const Library = () => {
                 }}
               >
                 <div className="story-image">
-                  <img
-                    src={story.imagePreview}
-                    alt={`Story ${index + 1}`}
-                    className="story-thumbnail"
-                  />
+                  {getCoverImage(story) ? (
+                    <img
+                      src={getCoverImage(story)}
+                      alt={`Story ${index + 1}`}
+                      className="story-thumbnail"
+                    />
+                  ) : (
+                    <div className="story-thumbnail-placeholder">
+                      <img src={bookPjImage} alt="Story" className="story-thumbnail-placeholder-img" />
+                    </div>
+                  )}
                 </div>
 
                 <div className="story-details">
                   <h3 className="story-title">
-                    Story #{stories.length - index}
+                    {story.title || `Story #${stories.length - index}`}
                   </h3>
 
                   <p className="story-description">
@@ -150,7 +170,7 @@ const Library = () => {
                       className="delete-btn"
                       onClick={() => deleteStory(index)}
                     >
-                      🗑️
+                      <img src={trashImg} alt="Delete" className="delete-btn-img" />
                     </button>
                   </div>
                 </div>
