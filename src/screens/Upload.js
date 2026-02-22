@@ -94,7 +94,6 @@ const Upload = () => {
             ) : (
               <div className="upload-placeholder">
                 <div className="upload-icon"><img src={drawingImg} alt="" className="upload-drawing-img" /></div>
-                <p>Upload your drawing</p>
                 <label htmlFor="image-upload" className="upload-label">Choose Image</label>
               </div>
             )}

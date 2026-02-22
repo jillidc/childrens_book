@@ -65,13 +65,13 @@
 }
 
 .image-upload {
-  margin-bottom: 30px;
+  margin-bottom: 16px;
 }
 
 .upload-box {
   border: 3px dashed #ccc;
   border-radius: 15px;
-  padding: 40px;
+  padding: 40px 40px 16px 40px;
   text-align: center;
   transition: all 0.3s ease;
   position: relative;
@@ -86,7 +86,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 0;
 }
 
 .upload-icon {
@@ -96,7 +96,7 @@
 /* Drawing image - upload placeholder illustration */
 .upload-drawing-img {
   display: block;
-  width: 140px;
+  width: 240px;
   max-width: 100%;
   height: auto;
   object-fit: contain;
@@ -144,24 +144,30 @@
 
 .upload-label {
   display: inline-block;
-  background: #1e40af;
+  background: transparent;
+  background-image: url('../assets/small-blue-button.PNG');
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
   color: white;
-  padding: 12px 25px;
-  border-radius: 25px;
+  padding: 18px 50px 25px 50px;
+  border-radius: 0;
+  border: none;
   cursor: pointer;
   font-weight: bold;
+  font-size: 1.5rem;
   margin-top: 0;
   transition: all 0.3s ease;
   pointer-events: none;
 }
 
 .upload-placeholder .upload-label {
-  margin-top: 15px;
+  margin-top: 0;
   pointer-events: auto;
 }
 
 .upload-label:hover {
-  background: #1e3a8a;
+  filter: brightness(0.9);
   transform: translateY(-2px);
 }
 
@@ -264,6 +270,6 @@
   }
 
   .upload-drawing-img {
-    width: 100px;
+    width: 160px;
   }
 }
