@@ -12,7 +12,7 @@ For future extensions of our project, we seek to incorporate multiple languages 
 
 1. Kids seeking to learn a second language can listen to and read along with the story narrator while having real-time access to a direct, native language translation of the foreign text that they are learning; we hope to have a translation in the kids' native tongue so that they can strengthen their foreign language comprehension by reinforcing translations between foreign and native tongues and building off of prior language knowledge.
 2. Teens practicing for language exams can get customized content that is displayed in both their native language and foreign language of study. This would grant teens the opportunity to gain greater exposure to variety in the tonal inflections in the foreign language that they are studying.
-We hope that our platform can support kids and teens who may not have regular access to native speakers (i.e. kids learning English in communities without many english speakers, teens studying Korean in communities with few Korean speakers beside their teachers at school during limited school hours, etc.).
+We hope that our platform can support kids and teens who may not have regular access to native speakers (i.e. kids learning English in communities without many English speakers, teens studying Korean in communities with few Korean speakers beside their teachers at school during limited school hours, etc.).
 
 ## ✨ Features
 
