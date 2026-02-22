@@ -14,13 +14,15 @@
 
 .done-container {
   max-width: 500px;
-  background: white;
+  background-color: transparent;
   border-radius: 20px;
-  padding: 50px 40px;
+  padding: 10px 40px;
   text-align: center;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
   position: relative;
   z-index: 2;
+  font-family: inherit;
+  font-weight: normal;
+  font-size: 1rem;
 }
 
 .celebration {
@@ -54,84 +56,80 @@
 }
 
 .primary-btn {
-  background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: transparent;
   color: white;
   border: none;
-  padding: 15px 30px;
-  font-size: 1.2rem;
-  font-weight: bold;
-  border-radius: 30px;
+  padding: 30px 30px 30px 30px;
+  font-family: inherit;
+  font-size: 1.6rem;
+  font-weight: normal;
   cursor: pointer;
-  margin: 8px;
+  margin: 8px auto;
   transition: all 0.3s ease;
-  box-shadow: 0 5px 15px rgba(238, 90, 36, 0.4);
   display: block;
-  width: 100%;
+  width: 108%;
+  max-width: 108%;
+  margin-left: -4%;
+  margin-right: -4%;
+  text-align: center;
 }
 
 .secondary-btn {
-  background: linear-gradient(135deg, #48c78e, #06d6a0);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: transparent;
   color: white;
   border: none;
-  padding: 12px 25px;
-  font-size: 1rem;
-  font-weight: bold;
-  border-radius: 25px;
+  padding: 30px 30px 30px 30px;
+  font-size: 1.6rem;
+  font-family: inherit;
+  font-weight: normal;
   cursor: pointer;
-  margin: 8px;
+  margin: 8px auto 15px auto;
   transition: all 0.3s ease;
-  box-shadow: 0 5px 15px rgba(6, 214, 160, 0.4);
   display: block;
-  width: 100%;
+  width: 108%;
+  max-width: 108%;
+  margin-left: -4%;
+  margin-right: -4%;
+  text-align: center;
 }
 
 .library-btn {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: transparent;
   color: white;
   border: none;
-  padding: 12px 25px;
-  font-size: 1rem;
-  font-weight: bold;
-  border-radius: 25px;
+  padding: 30px 30px 30px 30px;
+  font-size: 1.6rem;
+  font-family: inherit;
+  font-weight: normal;
   cursor: pointer;
-  margin: 8px;
+  margin: 8px auto;
   transition: all 0.3s ease;
-  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
   display: block;
-  width: 100%;
+  width: 108%;
+  margin-left: -4%;
+  margin-right: -4%;
+  text-align: center;
 }
 
 .primary-btn:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 25px rgba(238, 90, 36, 0.6);
 }
 
 .secondary-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(6, 214, 160, 0.6);
 }
 
 .library-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
-}
-
-.fun-facts {
-  border-top: 2px solid #f0f0f0;
-  padding-top: 20px;
-}
-
-.fun-fact {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin-bottom: 15px;
-  text-align: left;
-}
-
-.fact-icon {
-  font-size: 1.5rem;
-  flex-shrink: 0;
 }
 
 /* Drawing image - fact icon */

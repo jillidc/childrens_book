@@ -5,6 +5,10 @@ import nightSky from '../assets/night-sky.png';
 import cloudsPng from '../assets/clouds.png';
 import drawingImg from '../assets/drawing.PNG';
 import starsImg from '../assets/stars.png';
+import blue1 from '../assets/blue-1.PNG';
+import blue2 from '../assets/blue-2.PNG';
+import blue3 from '../assets/blue-3.PNG';
+import cloudDrawBg from '../assets/blue-cloud-bg.png';
 
 const Done = () => {
   const navigate = useNavigate();
@@ -25,7 +29,15 @@ const Done = () => {
   return (
     <div className="done-screen" style={{ backgroundImage: `url(${nightSky})` }}>
       <div className="scrolling-clouds" style={{ backgroundImage: `url(${cloudsPng})` }} />
-      <div className="done-container">
+      <div
+        className="done-container"
+        style={{
+          backgroundImage: `url(${cloudDrawBg})`,
+          backgroundSize: '100% 100%',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      >
         <div className="celebration">
           <div className="celebration-icon"><img src={starsImg} alt="Stars" className="celebration-img" /></div>
           <h1>Story Complete!</h1>
@@ -33,28 +45,17 @@ const Done = () => {
         </div>
 
         <div className="done-actions">
-          <button className="primary-btn" onClick={createNewStory}>
+          <button className="primary-btn" onClick={createNewStory} style={{ backgroundImage: `url(${blue1})` }}>
             Create Another Story
           </button>
 
-          <button className="secondary-btn" onClick={readAgain}>
+          <button className="secondary-btn" onClick={readAgain} style={{ backgroundImage: `url(${blue2})` }}>
             Read Again
           </button>
 
-          <button className="library-btn" onClick={goToLibrary}>
+          <button className="library-btn" onClick={goToLibrary} style={{ backgroundImage: `url(${blue3})` }}>
             View My Library
           </button>
-        </div>
-
-        <div className="fun-facts">
-          <div className="fun-fact">
-            <span className="fact-icon"><img src={starsImg} alt="" className="fact-stars-img" /></span>
-            <p>Every story you create is unique and special!</p>
-          </div>
-          <div className="fun-fact">
-            <span className="fact-icon"><img src={drawingImg} alt="" className="fact-drawing-img" /></span>
-            <p>Your imagination brought this story to life!</p>
-          </div>
         </div>
       </div>
     </div>
