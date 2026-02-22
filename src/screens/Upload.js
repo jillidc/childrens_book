@@ -31,7 +31,6 @@ const Upload = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const [description, setDescription] = useState('');
   const [language, setLanguage] = useState('english');
-  const [translationLanguage, setTranslationLanguage] = useState('');
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -67,7 +66,6 @@ const Upload = () => {
       const storyData = {
         description,
         language,
-        translationLanguage,
         imageUrl: remoteUrl || null,
         imageFileName: fileName || image.name,
         imagePreview: thumbnail || remoteUrl || null
@@ -138,34 +136,25 @@ const Upload = () => {
           />
         </div>
 
-        <div className="options-section">
-          <div className="language-select">
-            <label htmlFor="language">Story Language:</label>
-            <select
-              id="language"
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-            >
-              <option value="english">English</option>
-              <option value="spanish">Spanish</option>
-              <option value="french">French</option>
-              <option value="chinese">Chinese</option>
-            </select>
-          </div>
-
-          <div className="translation-select">
-            <label htmlFor="translation">Translate to (optional):</label>
-            <select
-              id="translation"
-              value={translationLanguage}
-              onChange={(e) => setTranslationLanguage(e.target.value)}
-            >
-              <option value="">No translation</option>
-              <option value="spanish">Spanish</option>
-              <option value="french">French</option>
-              <option value="english">English</option>
-              <option value="chinese">Chinese</option>
-            </select>
+        <div className="language-pills">
+          <span className="language-pills-label">Story Language</span>
+          <div className="language-pills-row">
+            {[
+              { value: 'english',  label: 'English', flag: '\uD83C\uDDFA\uD83C\uDDF8' },
+              { value: 'spanish',  label: 'Espa\u00f1ol', flag: '\uD83C\uDDEA\uD83C\uDDF8' },
+              { value: 'french',   label: 'Fran\u00e7ais', flag: '\uD83C\uDDEB\uD83C\uDDF7' },
+              { value: 'chinese',  label: '\u4E2D\u6587',  flag: '\uD83C\uDDE8\uD83C\uDDF3' },
+            ].map(lang => (
+              <button
+                key={lang.value}
+                className={`language-pill ${language === lang.value ? 'active' : ''}`}
+                onClick={() => setLanguage(lang.value)}
+                type="button"
+              >
+                <span className="language-pill-flag">{lang.flag}</span>
+                <span className="language-pill-text">{lang.label}</span>
+              </button>
+            ))}
           </div>
         </div>
 

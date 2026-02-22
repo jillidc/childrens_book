@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { generateWithTimestamps, clampSpeed } from '../services/elevenLabsService';
+import { generateWithTimestamps } from '../services/elevenLabsService';
 import openBook from '../assets/open-book.png';
 import './Story.css';
-import nightSky from '../assets/night-sky.png';
+import nightSky from '../assets/night-sky.gif';
 import cloudsPng from '../assets/clouds.png';
+import blueScribble from '../assets/bluescribble.png';
 
 function getPagesFromStory(storyData) {
   if (storyData.pages && Array.isArray(storyData.pages) && storyData.pages.length > 0) {
@@ -42,7 +43,7 @@ function HighlightedText({ text, charStart, charEnd }) {
   return (
     <>
       {text.slice(0, charStart)}
-      <mark className="word-highlight">{text.slice(charStart, charEnd)}</mark>
+      <span className="word-highlight">{text.slice(charStart, charEnd)}</span>
       {text.slice(charEnd)}
     </>
   );
@@ -68,9 +69,9 @@ const Story = () => {
   const totalSpreadsRef = useRef(1);
   const speakPageRef = useRef(null);
   const autoAdvanceRef = useRef(true);
+  const audioCacheRef = useRef(new Map());
+  const preloadPromisesRef = useRef(new Map());
   const navigate = useNavigate();
-
-  useEffect(() => { readingSpeedRef.current = readingSpeed; }, [readingSpeed]);
 
   const pages = useMemo(
     () => (storyData ? getPagesFromStory(storyData) : []),
@@ -95,12 +96,32 @@ const Story = () => {
     }
   }, [navigate]);
 
+  // Preload ElevenLabs audio for every spread as soon as pages are available
+  useEffect(() => {
+    if (pages.length === 0) return;
+    const numSpreads = Math.max(1, Math.ceil(pages.length / 2));
+
+    for (let s = 0; s < numSpreads; s++) {
+      if (audioCacheRef.current.has(s) || preloadPromisesRef.current.has(s)) continue;
+
+      const leftText  = pages[s * 2]?.text || '';
+      const rightText = pages[s * 2 + 1]?.text || '';
+      const spreadText = [leftText, rightText].filter(Boolean).join(' ');
+      if (!spreadText) continue;
+
+      const promise = generateWithTimestamps(spreadText)
+        .then(result => {
+          if (result) audioCacheRef.current.set(s, result);
+        })
+        .catch(() => {});
+      preloadPromisesRef.current.set(s, promise);
+    }
+  }, [pages]);
+
   const stopSpeech = useCallback(() => {
     if (audioRef.current) {
-      const oldSrc = audioRef.current.src;
       audioRef.current.pause();
       audioRef.current = null;
-      if (oldSrc.startsWith('blob:')) URL.revokeObjectURL(oldSrc);
     }
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     utteranceRef.current = null;
@@ -111,7 +132,15 @@ const Story = () => {
   }, []);
 
   useEffect(() => {
-    return () => { stopSpeech(); };
+    const cache = audioCacheRef.current;
+    return () => {
+      stopSpeech();
+      for (const entry of cache.values()) {
+        if (entry?.audioUrl?.startsWith('blob:')) URL.revokeObjectURL(entry.audioUrl);
+      }
+      cache.clear();
+      preloadPromisesRef.current.clear();
+    };
   }, [stopSpeech]);
 
   const speakWithSynthesis = useCallback((text) => {
@@ -146,7 +175,7 @@ const Story = () => {
             const nextRight = pagesRef.current[nextSpread * 2 + 1]?.text || '';
             const nextText = [nextLeft, nextRight].filter(Boolean).join(' ');
             if (nextText && speakPageRef.current) {
-              setTimeout(() => speakPageRef.current(nextText), 200);
+              setTimeout(() => speakPageRef.current(nextText, nextSpread), 200);
             }
           }, 400);
         }
@@ -162,16 +191,24 @@ const Story = () => {
     window.speechSynthesis.speak(utterance);
   }, []);
 
-  const speakPage = useCallback(async (text) => {
+  const speakPage = useCallback(async (text, spreadIdx) => {
     stopSpeech();
     if (!text) return;
 
     setIsLoadingAudio(true);
 
     try {
-      const result = await generateWithTimestamps(text, {
-        speed: clampSpeed(readingSpeedRef.current)
-      });
+      // Check the preload cache first; fall back to a live request
+      let result = audioCacheRef.current.get(spreadIdx) || null;
+      if (!result) {
+        const pending = preloadPromisesRef.current.get(spreadIdx);
+        if (pending) await pending;
+        result = audioCacheRef.current.get(spreadIdx) || null;
+      }
+      if (!result) {
+        result = await generateWithTimestamps(text);
+        if (result) audioCacheRef.current.set(spreadIdx, result);
+      }
 
       if (!result) {
         setIsLoadingAudio(false);
@@ -183,6 +220,7 @@ const Story = () => {
       wordTimingsRef.current = wordTimings;
 
       const audio = new Audio(audioUrl);
+      audio.playbackRate = readingSpeedRef.current;
       audioRef.current = audio;
 
       audio.addEventListener('timeupdate', () => {
@@ -195,12 +233,10 @@ const Story = () => {
       });
 
       audio.onended = () => {
-        const src = audio.src;
         audioRef.current = null;
         wordTimingsRef.current = [];
         setIsPlaying(false);
         setHighlightRange({ start: null, end: null });
-        if (src.startsWith('blob:')) URL.revokeObjectURL(src);
 
         if (autoAdvanceRef.current) {
           const nextSpread = currentSpreadRef.current + 1;
@@ -215,7 +251,7 @@ const Story = () => {
               const nextRight = pagesRef.current[nextSpread * 2 + 1]?.text || '';
               const nextText = [nextLeft, nextRight].filter(Boolean).join(' ');
               if (nextText && speakPageRef.current) {
-                setTimeout(() => speakPageRef.current(nextText), 200);
+                setTimeout(() => speakPageRef.current(nextText, nextSpread), 200);
               }
             }, 400);
           }
@@ -241,15 +277,22 @@ const Story = () => {
 
   useEffect(() => { speakPageRef.current = speakPage; }, [speakPage]);
 
+  useEffect(() => {
+    readingSpeedRef.current = readingSpeed;
+    if (audioRef.current) {
+      audioRef.current.playbackRate = readingSpeed;
+    }
+  }, [readingSpeed]);
+
   const handlePlayPause = useCallback(() => {
     if (isPlaying || isLoadingAudio) {
       stopSpeech();
     } else {
       const left = pages[leftIdx]?.text || '';
       const right = pages[rightIdx]?.text || '';
-      speakPage([left, right].filter(Boolean).join(' '));
+      speakPage([left, right].filter(Boolean).join(' '), currentSpread);
     }
-  }, [isPlaying, isLoadingAudio, stopSpeech, speakPage, pages, leftIdx, rightIdx]);
+  }, [isPlaying, isLoadingAudio, stopSpeech, speakPage, pages, leftIdx, rightIdx, currentSpread]);
 
   const goToNextSpread = useCallback(() => {
     if (currentSpread < totalSpreads - 1 && !isFlipping) {
@@ -308,28 +351,24 @@ const Story = () => {
   const playBtnLabel = isLoadingAudio
     ? 'Loading...'
     : isPlaying
-      ? <>&nbsp;&#9208;&#65039; Pause Story</>
-      : <>&nbsp;&#128266; Read Story Aloud</>;
+      ? <>Pause Story</>
+      : <>Read Story Aloud</>;
 
   return (
     <div className="story-screen" style={{ backgroundImage: `url(${nightSky})` }}>
       <div className="scrolling-clouds" style={{ backgroundImage: `url(${cloudsPng})` }} />
       <div className="story-header">
         <button className="back-btn" onClick={goBack}>&larr; Back</button>
-        <div className="story-header-info">
-          <h1>{storyData.title || 'Your Story'}</h1>
-          {storyData.description && (
-            <p className="story-header-description">{storyData.description}</p>
-          )}
-        </div>
-        <button className="done-btn" onClick={goToDone}>Done &check;</button>
+        <h1>{storyData.title || 'Your Story'}</h1>
+        <button className="done-btn" onClick={goToDone}>Done</button>
       </div>
 
       <div className="book-wrapper">
+        <div className="book-inner">
         <img src={openBook} alt="Book frame" className="book-frame" />
 
         <div className="book-pages">
-          <div className={`book-page left-page ${isFlipping && flipDirection === 'backward' ? 'flip-backward' : ''}`}>
+          <div className={`book-page left-page ${isFlipping && flipDirection.startsWith('backward') ? `flip-${flipDirection}` : ''}`}>
             <div className="page-content">
               {leftPage && (
                 <>
@@ -349,7 +388,7 @@ const Story = () => {
             </div>
           </div>
 
-          <div className={`book-page right-page ${isFlipping && flipDirection === 'forward' ? 'flip-forward' : ''}`}>
+          <div className={`book-page right-page ${isFlipping && flipDirection.startsWith('forward') ? `flip-${flipDirection}` : ''}`}>
             <div className="page-content">
               {rightPage ? (
                 <>
@@ -378,9 +417,10 @@ const Story = () => {
         {currentSpread < totalSpreads - 1 && (
           <button className="page-nav next-page" onClick={goToNextSpread}>&#8250;</button>
         )}
+        </div>
       </div>
 
-      <div className="story-controls">
+      <div className="story-controls" style={{ backgroundImage: `url(${blueScribble})` }}>
         <button
           className={playBtnClass}
           onClick={handlePlayPause}
@@ -391,7 +431,7 @@ const Story = () => {
 
         <div className="narrator-settings">
           <div className="setting-item">
-            <span className="setting-label">Speed</span>
+            <span className="setting-label">Speed:</span>
             <div className="speed-btn-group">
               {SPEED_OPTIONS.map(opt => (
                 <button
@@ -414,10 +454,6 @@ const Story = () => {
             </button>
           </div>
         </div>
-
-        {storyData.language && (
-          <span className="language-tag">Language: {storyData.language}</span>
-        )}
 
         <span className="page-indicator">
           Page {leftIdx + 1}{rightIdx < pages.length ? `\u2013${rightIdx + 1}` : ''} of {pages.length}

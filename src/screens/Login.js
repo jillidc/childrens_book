@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import './Login.css';
 import bgImage from '../assets/Jillian-BG.png';
+import cloudDrawBg from '../assets/blue-cloud-bg.png';
 
 const Login = () => {
   const [isRegister, setIsRegister] = useState(false);
@@ -38,7 +39,15 @@ const Login = () => {
 
   return (
     <div className="login-screen" style={{ backgroundImage: `url(${bgImage})` }}>
-      <div className="login-container">
+      <div
+        className="login-container"
+        style={{
+          backgroundImage: `url(${cloudDrawBg})`,
+          backgroundSize: '100% 100%',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      >
         <h1 className="login-title">Draw My Story</h1>
         <p className="login-subtitle">
           {isRegister ? 'Create an account to save your stories' : 'Sign in to access your stories'}

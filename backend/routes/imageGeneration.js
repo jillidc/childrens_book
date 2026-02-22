@@ -9,7 +9,7 @@ const schema = Joi.object({
   size: Joi.string().valid('1:1', '4:3', '3:4', '16:9', '9:16').optional()
 });
 
-// POST /api/generate-image - Generate image from text (Imagen), store, return URL
+// POST /api/generate-image - Generate image from text (Nano Banana), store, return URL
 router.post('/', async (req, res) => {
   try {
     const { error, value } = schema.validate(req.body);
@@ -20,10 +20,12 @@ router.post('/', async (req, res) => {
       });
     }
 
-    const { prompt, style } = value;
+    const { prompt, style, size } = value;
     const fullPrompt = style ? `${prompt}, ${style}` : prompt;
 
-    const result = await generateImage(fullPrompt, { numberOfImages: 1 });
+    const result = await generateImage(fullPrompt, {
+      aspectRatio: size || '4:3'
+    });
 
     res.json({
       success: true,

@@ -7,14 +7,12 @@ import apiService from './apiService';
 export const generateStory = async (
   description,
   language = 'english',
-  translationLanguage = null,
   imageUrl = null
 ) => {
   try {
     const requestData = {
       description,
       language,
-      ...(translationLanguage && { translationLanguage }),
     };
 
     if (imageUrl) {
@@ -52,14 +50,14 @@ export const convertBook = async (rawText) => {
 
 function getFallbackData(description, language) {
   const fullText = getFallbackStory(description, language);
+  const firstWords = fullText.split(/\s+/).slice(0, 8).join(' ').replace(/[.!?,;:]+$/, '').trim();
   return {
     pages: [{ text: fullText, imageUrl: null }],
     fullText,
     story: fullText,
-    translatedStory: null,
-    translatedPages: null,
+    title: firstWords || 'My Story',
+    summary: fullText.slice(0, 120).replace(/\s+\S*$/, '...'),
     language,
-    translationLanguage: null,
     description,
     generatedAt: new Date().toISOString(),
     fallback: true

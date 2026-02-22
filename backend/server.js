@@ -50,7 +50,6 @@ app.use('/api/text-to-speech', ttsLimiter, require('./routes/textToSpeech'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/describe-image', aiLimiter, require('./routes/describeImage'));
-app.use('/api/translate', aiLimiter, require('./routes/translate'));
 app.use('/api/generate-image', aiLimiter, require('./routes/imageGeneration'));
 
 // Health check endpoint

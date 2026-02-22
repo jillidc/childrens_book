@@ -3,21 +3,42 @@ const router = express.Router();
 const Joi = require('joi');
 const axios = require('axios');
 
+// ElevenLabs allows max 2 concurrent requests on typical plans — serialize with-timestamps calls
+const MAX_CONCURRENT_ELEVENLABS = 2;
+let activeElevenLabs = 0;
+const elevenLabsQueue = [];
+
+function runWhenSlotFree(fn) {
+  return new Promise((resolve, reject) => {
+    const run = () => {
+      activeElevenLabs++;
+      Promise.resolve(fn())
+        .then(resolve, reject)
+        .finally(() => {
+          activeElevenLabs--;
+          if (elevenLabsQueue.length > 0) elevenLabsQueue.shift()();
+        });
+    };
+    if (activeElevenLabs < MAX_CONCURRENT_ELEVENLABS) run();
+    else elevenLabsQueue.push(run);
+  });
+}
+
 // Rachel — warm, calm, soothing female voice (ideal for children's storytelling)
 const DEFAULT_VOICE_ID   = '21m00Tcm4TlvDq8ikWAM';
-// eleven_flash_v2_5 — ultra-low latency (~75 ms), good quality, fast warm-up
-const DEFAULT_MODEL_ID   = 'eleven_flash_v2_5';
+// eleven_v3 — most expressive model, ideal for storytelling and audiobook narration
+const DEFAULT_MODEL_ID   = 'eleven_v3';
 
 // Validation schema
 const textToSpeechSchema = Joi.object({
   text: Joi.string().min(1).max(10000).required(),
   voiceId: Joi.string().optional().default(DEFAULT_VOICE_ID),
   modelId: Joi.string().optional().default(DEFAULT_MODEL_ID),
-  stability: Joi.number().min(0).max(1).optional().default(0.65),
+  stability: Joi.number().min(0).max(1).optional().default(0.5),
   similarityBoost: Joi.number().min(0).max(1).optional().default(0.75),
-  style: Joi.number().min(0).max(1).optional().default(0.3),
+  style: Joi.number().min(0).max(1).optional().default(0.65),
   useSpeakerBoost: Joi.boolean().optional().default(true),
-  speed: Joi.number().min(0.7).max(1.2).optional().default(1.0)
+  speed: Joi.number().min(0.5).max(2.0).optional().default(1.0)
 });
 
 // ElevenLabs API configuration
@@ -33,9 +54,9 @@ const generateAudioWithElevenLabs = async (text, options = {}) => {
   const {
     voiceId = DEFAULT_VOICE_ID,
     modelId = DEFAULT_MODEL_ID,
-    stability = 0.65,
+    stability = 0.5,
     similarityBoost = 0.75,
-    style = 0.3,
+    style = 0.65,
     useSpeakerBoost = true,
     speed = 1.0
   } = options;
@@ -61,7 +82,7 @@ const generateAudioWithElevenLabs = async (text, options = {}) => {
           'xi-api-key': apiKey,
         },
         responseType: 'arraybuffer',
-        timeout: 60000
+        timeout: 90000
       }
     );
 
@@ -82,27 +103,97 @@ const generateAudioWithElevenLabs = async (text, options = {}) => {
   }
 };
 
-// Convert character-level ElevenLabs alignment to word-level timing
-const buildWordTimings = (originalText, alignment) => {
+/**
+ * Inject ElevenLabs v3 audio tags at sentence boundaries for expressive narration.
+ * Returns { annotated, offsets } where offsets maps clean→annotated positions.
+ */
+function addExpressiveMarkers(cleanText) {
+  const markers = [];
+  const sentenceRegex = /[^.!?]*[.!?]+/g;
+  let m;
+  let pos = 0;
+
+  while ((m = sentenceRegex.exec(cleanText)) !== null) {
+    const sentence = m[0];
+    const lower = sentence.toLowerCase();
+    let tag;
+
+    if (/!/.test(sentence)) {
+      if (/\b(hooray|yay|wow|amazing|wonderful|incredible|fantastic)\b/.test(lower)) {
+        tag = '[laughs happily] ';
+      } else {
+        tag = '[excited] ';
+      }
+    } else if (/\?/.test(sentence)) {
+      tag = '[curiously] ';
+    } else if (/\b(whisper|quiet|soft|hush|tiptoe|sneak)\b/.test(lower)) {
+      tag = '[softly] ';
+    } else if (/\b(scar|dark|afraid|tremble|shiver|nervou)\b/.test(lower)) {
+      tag = '[nervously] ';
+    } else if (/\b(sad|cry|tear|miss|lone)\b/.test(lower)) {
+      tag = '[gently] ';
+    } else if (pos === 0) {
+      tag = '[warmly] ';
+    } else {
+      tag = '';
+    }
+
+    if (tag) {
+      markers.push({ cleanPos: m.index, marker: tag });
+    }
+    pos++;
+  }
+
+  let annotated = '';
+  let lastCleanPos = 0;
+  let cumOffset = 0;
+  const offsets = [];
+
+  for (const mk of markers) {
+    annotated += cleanText.slice(lastCleanPos, mk.cleanPos) + mk.marker;
+    cumOffset += mk.marker.length;
+    offsets.push({ cleanPos: mk.cleanPos, offset: cumOffset });
+    lastCleanPos = mk.cleanPos;
+  }
+  annotated += cleanText.slice(lastCleanPos);
+
+  return { annotated, offsets };
+}
+
+function cleanToAnnotatedPos(cleanPos, offsets) {
+  let offset = 0;
+  for (const o of offsets) {
+    if (o.cleanPos <= cleanPos) offset = o.offset;
+    else break;
+  }
+  return cleanPos + offset;
+}
+
+/**
+ * Convert character-level ElevenLabs alignment to word-level timing.
+ * Word positions are in cleanText coordinates (for display highlighting).
+ * Alignment is in annotatedText coordinates (what ElevenLabs received).
+ */
+const buildWordTimings = (cleanText, alignment, offsets = []) => {
   const { characters, character_start_times_seconds, character_end_times_seconds } = alignment;
   if (!characters?.length) return [];
+  const aLen = character_start_times_seconds.length;
 
   const wordTimings = [];
   const wordRegex = /\S+/g;
   let match;
 
-  while ((match = wordRegex.exec(originalText)) !== null) {
-    const charStart = match.index;
-    const charEnd   = charStart + match[0].length;
+  while ((match = wordRegex.exec(cleanText)) !== null) {
+    const cleanStart = match.index;
+    const cleanEnd   = cleanStart + match[0].length;
 
-    // Alignment positions track ~1-to-1 with original text characters
-    const aStart = Math.min(charStart, character_start_times_seconds.length - 1);
-    const aEnd   = Math.min(charEnd - 1, character_end_times_seconds.length - 1);
+    const aStart = Math.min(cleanToAnnotatedPos(cleanStart, offsets), aLen - 1);
+    const aEnd   = Math.min(cleanToAnnotatedPos(cleanEnd - 1, offsets), aLen - 1);
 
     wordTimings.push({
       word: match[0],
-      charStart,
-      charEnd,
+      charStart: cleanStart,
+      charEnd: cleanEnd,
       startTime: character_start_times_seconds[aStart] ?? 0,
       endTime:   character_end_times_seconds[aEnd]   ?? 0
     });
@@ -122,34 +213,39 @@ const generateAudioWithTimestamps = async (text, options = {}) => {
   const {
     voiceId = DEFAULT_VOICE_ID,
     modelId = DEFAULT_MODEL_ID,
-    stability = 0.65,
+    stability = 0.5,
     similarityBoost = 0.75,
-    style = 0.3,
+    style = 0.65,
     useSpeakerBoost = true,
     speed = 1.0
   } = options;
 
+  const { annotated, offsets } = addExpressiveMarkers(text);
+  console.log(`[TTS] Annotated text: "${annotated.slice(0, 120)}…"`);
+
   try {
-    const response = await axios.post(
-      `${ELEVENLABS_API_URL}/text-to-speech/${voiceId}/with-timestamps`,
-      {
-        text,
-        model_id: modelId,
-        voice_settings: {
-          stability,
-          similarity_boost: similarityBoost,
-          style,
-          use_speaker_boost: useSpeakerBoost,
-          speed
-        }
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'xi-api-key': apiKey,
+    const response = await runWhenSlotFree(() =>
+      axios.post(
+        `${ELEVENLABS_API_URL}/text-to-speech/${voiceId}/with-timestamps`,
+        {
+          text: annotated,
+          model_id: modelId,
+          voice_settings: {
+            stability,
+            similarity_boost: similarityBoost,
+            style,
+            use_speaker_boost: useSpeakerBoost,
+            speed
+          }
         },
-        timeout: 60000
-      }
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'xi-api-key': apiKey,
+          },
+          timeout: 90000
+        }
+      )
     );
 
     const { audio_base64, alignment } = response.data;
@@ -158,7 +254,7 @@ const generateAudioWithTimestamps = async (text, options = {}) => {
       throw new Error('ElevenLabs returned incomplete timestamp response');
     }
 
-    const wordTimings = buildWordTimings(text, alignment);
+    const wordTimings = buildWordTimings(text, alignment, offsets);
 
     return {
       audioBase64: audio_base64,

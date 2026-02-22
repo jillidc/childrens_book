@@ -70,12 +70,12 @@
 }
 
 .progress-bar {
-  width: 100%;
+  width: 300px;
   height: 8px;
   background: rgba(255,255,255,0.3);
   border-radius: 4px;
   overflow: hidden;
-  margin-bottom: 20px;
+  margin: auto;
 }
 
 .progress-fill {
@@ -113,10 +113,10 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 200%;
+  width: 200vw;
   height: 100%;
   background-repeat: repeat-x;
-  background-size: 100% auto;
+  background-size: auto 100%;
   background-position: 0 center;
   animation: scroll-clouds 80s linear infinite;
   pointer-events: none;

@@ -150,11 +150,6 @@ const Library = () => {
                     <span className="story-date">
                       {story.createdAt ? formatDate(story.createdAt) : 'Recently created'}
                     </span>
-                    {story.language && (
-                      <span className="story-language">
-                        {story.language}
-                      </span>
-                    )}
                   </div>
 
                   <div className="story-actions">

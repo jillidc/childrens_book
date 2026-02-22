@@ -38,7 +38,7 @@ const BookConversion = () => {
 
       <div className="book-conversion-container">
         <p className="book-conversion-intro">
-          Paste adult or young-adult book text below. We’ll simplify it for kids (Grade 2–4), pick key scenes, and add child-friendly illustrations.
+          Paste adult or young-adult book text below. We'll simplify it for kids (Grade 2–4), pick key scenes, and add child-friendly illustrations.
         </p>
 
         <textarea
@@ -58,7 +58,7 @@ const BookConversion = () => {
           onClick={handleSubmit}
           disabled={loading || !rawText.trim()}
         >
-          {loading ? 'Simplifying & illustrating…' : 'Convert to children’s book'}
+          {loading ? 'Simplifying & illustrating…' : 'Convert to children\'s book'}
         </button>
 
         {result && (

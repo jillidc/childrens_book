@@ -7,7 +7,6 @@ import Loading from './screens/Loading';
 import Story from './screens/Story';
 import Done from './screens/Done';
 import Library from './screens/Library';
-import BookConversion from './screens/BookConversion';
 import Account from './screens/Account';
 import './App.css';
 
@@ -24,7 +23,6 @@ function App() {
             <Route path="/story" element={<Story />} />
             <Route path="/done" element={<Done />} />
             <Route path="/library" element={<Library />} />
-            <Route path="/book-conversion" element={<BookConversion />} />
             <Route path="/account" element={<Account />} />
           </Routes>
         </div>

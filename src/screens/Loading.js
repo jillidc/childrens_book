@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { generateStory } from '../services/geminiService';
 import storyService from '../services/storyService';
 import './Loading.css';
-import nightSky from '../assets/night-sky.png';
+import nightSky from '../assets/night-sky.gif';
 import cloudsPng from '../assets/clouds.png';
 
 const loadingMessages = [
@@ -45,7 +45,6 @@ const Loading = () => {
         const data = await generateStory(
           storyData.description,
           storyData.language,
-          storyData.translationLanguage,
           imageForApi
         );
 
@@ -56,11 +55,14 @@ const Loading = () => {
         const fullText = data.fullText || data.story || '';
         const pages = data.pages || [{ text: fullText, imageUrl: null }];
 
-        const autoTitle = storyData.description
-          ? storyData.description.charAt(0).toUpperCase() +
-            storyData.description.slice(1, 60).trim() +
-            (storyData.description.length > 60 ? '...' : '')
-          : 'My Story';
+        const fallbackSummary = fullText
+          ? fullText.slice(0, 120).replace(/\s+\S*$/, '...')
+          : (data.summary || 'A magical story.');
+
+        const rawTitle = (data.title && String(data.title).trim()) || '';
+        const firstEight = (pages[0]?.text || fullText).split(/\s+/).slice(0, 8).join(' ').replace(/[.!?,;:]+$/, '').trim();
+        const titleIsJustFirstSentence = rawTitle.length > 50 || (firstEight && rawTitle.toLowerCase().slice(0, 40) === firstEight.toLowerCase().slice(0, 40));
+        const storyTitle = (rawTitle && !titleIsJustFirstSentence) ? rawTitle : 'My Story';
 
         const completeStory = {
           ...storyData,
@@ -68,8 +70,8 @@ const Loading = () => {
           fullText,
           storyText: fullText,
           story: fullText,
-          title: data.title || storyData.title || autoTitle,
-          description: data.summary || storyData.description,
+          title: storyTitle,
+          description: data.summary || fallbackSummary,
           createdAt: storyData.createdAt || new Date().toISOString()
         };
 
@@ -85,7 +87,6 @@ const Loading = () => {
             description: completeStory.description,
             storyText: JSON.stringify({ version: 2, pages: pagesPayload }),
             language: completeStory.language,
-            translationLanguage: completeStory.translationLanguage || null,
             imageFileName: completeStory.imageFileName || null,
           };
           if (completeStory.imageUrl && !completeStory.imageUrl.startsWith('blob:') && !completeStory.imageUrl.startsWith('data:')) {
@@ -157,7 +158,6 @@ const Loading = () => {
         </div>
 
         <div className="loading-details">
-          <p>We're creating a personalized story just for you!</p>
         </div>
       </div>
     </div>
