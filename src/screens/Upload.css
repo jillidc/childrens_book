@@ -64,26 +64,13 @@
   flex-wrap: wrap;
 }
 
-.library-footer,
-.book-conversion-link {
+.library-footer {
   cursor: pointer;
   transition: all 0.3s ease;
-}
-
-.library-footer:hover,
-.book-conversion-link:hover {
-  transform: scale(1.05);
-}
-
-.library-footer {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.book-conversion-link .library-btn-text {
-  position: static;
 }
 
 .library-footer:hover {

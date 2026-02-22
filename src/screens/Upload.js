@@ -184,9 +184,6 @@ const Upload = () => {
           <img src={libraryIcon} alt="My Library" className="library-btn-img" />
           <span className="library-btn-text">My Library</span>
         </div>
-        <div className="book-conversion-link" onClick={() => navigate('/book-conversion')}>
-          <span className="library-btn-text">📚 Convert a Book</span>
-        </div>
       </div>
     </div>
   );
