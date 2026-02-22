@@ -55,13 +55,14 @@ const Loading = () => {
         const fullText = data.fullText || data.story || '';
         const pages = data.pages || [{ text: fullText, imageUrl: null }];
 
-        const firstPageText = pages[0]?.text || fullText;
-        const fallbackTitle = firstPageText
-          ? firstPageText.split(/\s+/).slice(0, 8).join(' ').replace(/[.!?,;:]+$/, '')
-          : 'My Story';
         const fallbackSummary = fullText
           ? fullText.slice(0, 120).replace(/\s+\S*$/, '...')
-          : storyData.description;
+          : (data.summary || 'A magical story.');
+
+        const rawTitle = (data.title && String(data.title).trim()) || '';
+        const firstEight = (pages[0]?.text || fullText).split(/\s+/).slice(0, 8).join(' ').replace(/[.!?,;:]+$/, '').trim();
+        const titleIsJustFirstSentence = rawTitle.length > 50 || (firstEight && rawTitle.toLowerCase().slice(0, 40) === firstEight.toLowerCase().slice(0, 40));
+        const storyTitle = (rawTitle && !titleIsJustFirstSentence) ? rawTitle : 'My Story';
 
         const completeStory = {
           ...storyData,
@@ -69,7 +70,7 @@ const Loading = () => {
           fullText,
           storyText: fullText,
           story: fullText,
-          title: data.title || storyData.title || fallbackTitle,
+          title: storyTitle,
           description: data.summary || fallbackSummary,
           createdAt: storyData.createdAt || new Date().toISOString()
         };

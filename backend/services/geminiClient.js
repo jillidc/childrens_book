@@ -68,7 +68,18 @@ async function generateText(contents, options = {}) {
       config: { ...config }
     });
     const text = response.text ?? response.candidates?.[0]?.content?.parts?.find(p => p.text)?.text;
-    if (text == null) throw new Error('No text in Gemini response');
+    if (text == null) {
+      const candidate = response.candidates?.[0];
+      const finishReason = candidate?.finishReason ?? candidate?.finishMessage;
+      const blockReason = candidate?.blockReason ?? response.promptFeedback?.blockReason;
+      const msg = [
+        'No text in Gemini response',
+        finishReason ? `finishReason: ${finishReason}` : '',
+        blockReason ? `blockReason: ${blockReason}` : ''
+      ].filter(Boolean).join('; ');
+      console.warn('[Gemini generateText]', msg);
+      throw new Error(msg);
+    }
     return String(text).trim();
   }, `generateText(${options.model || TEXT_MODEL})`);
 }
@@ -141,13 +152,39 @@ async function generateImage(prompt, referenceImage = null, options = {}) {
   }, `generateImage(${model})`);
 }
 
-/** Parse JSON from model text (strip markdown fences if present). */
+/** Parse JSON from model text (strip markdown fences if present). Tolerates unquoted keys and trailing commas. */
 function parseJsonFromText(text) {
-  const stripped = text
+  if (text == null || typeof text !== 'string') throw new Error('parseJsonFromText requires a string');
+  let stripped = text
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```\s*$/i, '')
     .trim();
-  return JSON.parse(stripped);
+
+  function tryParse(s) {
+    if (!s || !s.trim()) return null;
+    try {
+      return JSON.parse(s);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  let parsed = tryParse(stripped);
+  if (parsed !== null) return parsed;
+
+  const match = stripped.match(/\{[\s\S]*\}/);
+  const toParse = match ? match[0] : stripped;
+  parsed = tryParse(toParse);
+  if (parsed !== null) return parsed;
+
+  const normalized = toParse
+    .replace(/([\{\,]\s*)(\w+)(\s*:)/g, '$1"$2"$3')
+    .replace(/,(\s*[\}\]])/g, '$1');
+  parsed = tryParse(normalized);
+  if (parsed !== null) return parsed;
+
+  console.warn('[parseJsonFromText] JSON parse failed. First 200 chars:', stripped.slice(0, 200));
+  throw new SyntaxError('Invalid JSON from model. First 200 chars: ' + stripped.slice(0, 200));
 }
 
 module.exports = {

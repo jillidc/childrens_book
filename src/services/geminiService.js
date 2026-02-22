@@ -50,10 +50,13 @@ export const convertBook = async (rawText) => {
 
 function getFallbackData(description, language) {
   const fullText = getFallbackStory(description, language);
+  const firstWords = fullText.split(/\s+/).slice(0, 8).join(' ').replace(/[.!?,;:]+$/, '').trim();
   return {
     pages: [{ text: fullText, imageUrl: null }],
     fullText,
     story: fullText,
+    title: firstWords || 'My Story',
+    summary: fullText.slice(0, 120).replace(/\s+\S*$/, '...'),
     language,
     description,
     generatedAt: new Date().toISOString(),

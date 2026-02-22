@@ -171,26 +171,80 @@ router.post('/', async (req, res) => {
 
       let generatedTitle = null;
       let generatedSummary = null;
-      try {
-        const titlePrompt = `Given this children's story, generate a creative, fun title (max 8 words) and a one-sentence summary (max 120 characters) that captures the heart of the story.\n\nStory:\n${fullText.slice(0, 1500)}\n\nRespond with ONLY valid JSON, no markdown:\n{"title": "...", "summary": "..."}`;
-        const titleRaw = await gemini.generateText(titlePrompt, {
-          model: gemini.EXPANSION_MODEL,
-          temperature: 0.9,
-          maxOutputTokens: 200
-        });
-        const titleResult = gemini.parseJsonFromText(titleRaw);
-        generatedTitle = titleResult.title || null;
-        generatedSummary = titleResult.summary || null;
-        console.log(`[generate-story] AI title: "${generatedTitle}"`);
-      } catch (e) {
-        console.warn('[generate-story] Title generation failed:', e.message);
+      const firstPageFirstWords = pages.length > 0
+        ? pages[0].split(/\s+/).slice(0, 8).join(' ').replace(/[.!?,;:]+$/, '').trim().toLowerCase()
+        : '';
+
+      function looksLikeStorySentence(title) {
+        if (!title || typeof title !== 'string') return true;
+        const t = title.trim();
+        if (t.split(/\s+/).length > 8) return true;
+        if (t.length > 60) return true;
+        if (firstPageFirstWords && t.toLowerCase().slice(0, 40) === firstPageFirstWords.slice(0, 40)) return true;
+        return false;
       }
 
-      if (!generatedTitle && pages.length > 0) {
-        const firstPage = pages[0] || '';
-        const words = firstPage.split(/\s+/).slice(0, 8);
-        generatedTitle = words.join(' ').replace(/[.!?,;:]+$/, '');
+      try {
+        const titlePrompt = `You are a children's book editor. Given this children's story, create:
+1. A short, catchy BOOK TITLE (max 8 words) — creative and fun, NOT a repeat of the first sentence or the story description. Examples: "The Brave Little Dragon", "Where the Crayons Dance".
+2. A one-sentence summary (max 120 characters) that captures the heart of the story for the back cover.
+
+Story:
+${fullText.slice(0, 1500)}
+
+Respond with ONLY valid JSON, no markdown or extra text:
+{"title": "...", "summary": "..."}`;
+        const titleGenConfig = {
+          model: gemini.EXPANSION_MODEL,
+          temperature: 0.9,
+          maxOutputTokens: 4096,
+          config: {
+            safetySettings: [
+              { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+              { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+              { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+              { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
+            ]
+          }
+        };
+        let titleRaw = await gemini.generateText(titlePrompt, titleGenConfig);
+        let titleResult;
+        try {
+          titleResult = gemini.parseJsonFromText(titleRaw);
+        } catch (parseErr) {
+          if (titleRaw && titleRaw.length < 100) {
+            console.warn('[generate-story] Title response truncated, retrying once. Length:', titleRaw.length);
+            titleRaw = await gemini.generateText(titlePrompt, titleGenConfig);
+            titleResult = gemini.parseJsonFromText(titleRaw);
+          } else {
+            throw parseErr;
+          }
+        }
+        const rawTitle = (
+          (titleResult.title && String(titleResult.title).trim()) ||
+          (titleResult.book_title && String(titleResult.book_title).trim()) ||
+          (titleResult.name && String(titleResult.name).trim()) ||
+          null
+        );
+        if (rawTitle && !looksLikeStorySentence(rawTitle)) {
+          generatedTitle = rawTitle;
+        } else if (rawTitle) {
+          console.warn('[generate-story] Title rejected (looks like story sentence):', rawTitle.slice(0, 60));
+        }
+        generatedSummary = (
+          (titleResult.summary && String(titleResult.summary).trim()) ||
+          (titleResult.description && String(titleResult.description).trim()) ||
+          null
+        );
+        console.log(`[generate-story] AI title: "${generatedTitle || '(rejected: looks like sentence)'}"`);
+      } catch (e) {
+        console.warn('[generate-story] Title generation failed:', e.message);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[generate-story] Title error stack:', e.stack);
+        }
       }
+
+      if (!generatedTitle) generatedTitle = 'My Story';
       if (!generatedSummary) {
         generatedSummary = fullText.slice(0, 120).replace(/\s+\S*$/, '...');
       }
@@ -201,8 +255,8 @@ router.post('/', async (req, res) => {
           pages: pageResults,
           fullText,
           story: fullText,
-          title: generatedTitle || null,
-          summary: generatedSummary || null,
+          title: generatedTitle,
+          summary: generatedSummary || fullText.slice(0, 120).replace(/\s+\S*$/, '...'),
           language,
           description,
           generatedAt: new Date().toISOString()
@@ -212,12 +266,16 @@ router.post('/', async (req, res) => {
     } catch (err) {
       console.error('Gemini generation error:', err);
       const fallbackText = getFallbackStory(description, language);
+      const fallbackTitle = fallbackText.split(/\s+/).slice(0, 8).join(' ').replace(/[.!?,;:]+$/, '').trim() || 'My Story';
+      const fallbackSummary = fallbackText.slice(0, 120).replace(/\s+\S*$/, '...');
       res.json({
         success: true,
         data: {
           pages: [{ text: fallbackText, imageUrl: null }],
           fullText: fallbackText,
           story: fallbackText,
+          title: fallbackTitle,
+          summary: fallbackSummary,
           language,
           description,
           generatedAt: new Date().toISOString(),
