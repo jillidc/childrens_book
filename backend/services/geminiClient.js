@@ -1,13 +1,13 @@
 /**
- * Gemini / Imagen API client using @google/genai.
+ * Gemini API client using @google/genai.
  *
  * Model roles (paid tier — $300 credits):
  *   TEXT_MODEL      — story gen, drawing parse, scene expansion  gemini-2.5-flash
- *   EXPANSION_MODEL — scene expansion per page                   gemini-2.5-flash  (same model, separate constant)
- *   IMAGE_MODEL     — full-quality 2D illustration generation    imagen-4.0-generate-001
- *
- * With billing enabled, gemini-2.5-flash runs at ~1000 RPM and 4M TPM (paid).
- * Imagen 4 (full quality, not "Fast") delivers the best picture-book illustrations.
+ *   EXPANSION_MODEL — scene expansion per page                   gemini-2.5-flash
+ *   IMAGE_MODEL     — illustration generation                    gemini-2.5-flash-image
+ *                     ("Nano Banana" — fast native Gemini image gen, 1024 px output)
+ *                     Uses generateContent() with responseModalities: ['IMAGE'].
+ *                     No Imagen API — same key, same SDK, better prompt understanding.
  *
  * Every call retries with exponential backoff on 429 / 503 / RESOURCE_EXHAUSTED.
  */
@@ -24,11 +24,11 @@ async function getClient() {
 }
 
 // Paid-tier models — billing enabled ($300 credits):
-//   gemini-2.5-flash        : ~1000 RPM / 4M TPM — best text quality available
-//   imagen-4.0-generate-001 : full-quality Imagen 4, pay-per-image
-const TEXT_MODEL      = 'gemini-2.5-flash';             // story gen & drawing parse
-const EXPANSION_MODEL = 'gemini-2.5-flash';             // scene expansion (same model, no free-tier workaround needed)
-const IMAGE_MODEL     = 'imagen-4.0-generate-001';      // Imagen 4 full quality (not Fast)
+//   gemini-2.5-flash       : ~1000 RPM / 4M TPM — best text quality available
+//   gemini-2.5-flash-image : Nano Banana — fast native image gen (~1000 RPM), 1024 px
+const TEXT_MODEL      = 'gemini-2.5-flash';         // story gen & drawing parse
+const EXPANSION_MODEL = 'gemini-2.5-flash';         // scene expansion
+const IMAGE_MODEL     = 'gemini-2.5-flash-image';   // Nano Banana native image generation
 
 const MAX_RETRIES = 4;
 const INITIAL_BACKOFF_MS = 2000;
@@ -83,58 +83,57 @@ async function generateTextWithImage(imageBase64, textPrompt, options = {}) {
 }
 
 /**
- * Generate one illustration. Returns { data: base64, mimeType }.
+ * Generate one illustration using Gemini native image generation (Nano Banana).
+ * Returns { data: base64string, mimeType }.
  *
- * Routing logic:
- *  - imagen-* models  → client.models.generateImages() (Imagen 4 API)
- *  - gemini-* models  → client.models.generateContent() with responseModalities: IMAGE
+ * Uses gemini-2.5-flash-image by default via generateContent() with
+ * responseModalities: ['IMAGE'].  The model understands rich narrative prompts
+ * far better than keyword lists, so always pass a full descriptive paragraph.
+ *
+ * @param {string}      prompt         - Full narrative image prompt
+ * @param {object|null} referenceImage - Optional { mimeType, data } for image-to-image editing
+ * @param {object}      options        - { imageModel, aspectRatio }
  */
 async function generateImage(prompt, referenceImage = null, options = {}) {
   const model = options.imageModel || IMAGE_MODEL;
 
-  // ── Imagen 4 path ────────────────────────────────────────────────────────
-  if (model.startsWith('imagen-')) {
-    return withRetry(async () => {
-      const client = await getClient();
-
-      // Only pass params documented in the JS SDK spec.
-      // negativePrompt and outputMimeType are Python-only; omitting avoids silent rejections.
-      const response = await client.models.generateImages({
-        model,
-        prompt,
-        config: {
-          numberOfImages: 1,
-          aspectRatio: options.aspectRatio || '4:3',
-          personGeneration: 'allow_all'  // needed so child characters can be illustrated
-        }
-      });
-
-      const generated = response.generatedImages?.[0];
-      if (!generated?.image?.imageBytes) throw new Error('No image returned from Imagen');
-      return {
-        data: generated.image.imageBytes,   // already base64
-        mimeType: generated.image.mimeType || 'image/jpeg'
-      };
-    }, `generateImage(${model})`);
-  }
-
-  // ── Gemini generateContent path (legacy / fallback) ──────────────────────
   return withRetry(async () => {
     const client = await getClient();
+
+    // Build contents array — text prompt first, then optional reference image
     const contents = referenceImage
       ? [
           { text: prompt },
           { inlineData: { mimeType: referenceImage.mimeType || 'image/png', data: referenceImage.data } }
         ]
-      : prompt;
-    const config = {
-      responseModalities: ['IMAGE'],
-      imageConfig: { aspectRatio: options.aspectRatio || '4:3' },
-      ...options.config
-    };
-    const response = await client.models.generateContent({ model, contents, config });
-    const part = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-    if (!part?.inlineData?.data) throw new Error('No image in Gemini response');
+      : [{ text: prompt }];
+
+    const response = await client.models.generateContent({
+      model,
+      contents,
+      config: {
+        responseModalities: ['IMAGE'],
+        imageConfig: { aspectRatio: options.aspectRatio || '4:3' }
+      }
+    });
+
+    // The model may return thought images (part.thought === true) before the final image.
+    // We want the LAST non-thought image part (the final rendered output).
+    const parts = response.candidates?.[0]?.content?.parts ?? [];
+    const imageParts = parts.filter(p => p.inlineData && !p.thought);
+    const part = imageParts[imageParts.length - 1]; // last = final output
+
+    if (!part?.inlineData?.data) {
+      // Log all parts for debugging
+      console.error('No image in response. Parts:', JSON.stringify(parts.map(p => ({
+        hasText: !!p.text,
+        hasImage: !!p.inlineData,
+        thought: p.thought,
+        mimeType: p.inlineData?.mimeType
+      }))));
+      throw new Error('No image returned from Gemini image model');
+    }
+
     return {
       data: part.inlineData.data,
       mimeType: part.inlineData.mimeType || 'image/png'

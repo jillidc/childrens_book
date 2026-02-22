@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { generateWithTimestamps, clampSpeed } from '../services/elevenLabsService';
 import './Story.css';
 
 function getPagesAndFullText(storyData) {
@@ -17,7 +18,11 @@ function getPagesAndFullText(storyData) {
   return { pages: null, fullText: raw || storyData.story || '' };
 }
 
-const SPEED_LABELS = { 0.5: 'Slow', 0.75: 'Normal', 1: 'Fast', 1.25: 'Very Fast' };
+const SPEED_OPTIONS = [
+  { value: 0.8,  label: 'Slow'   },
+  { value: 1.0,  label: 'Medium' },
+  { value: 1.15, label: 'Fast'   },
+];
 
 function HighlightedText({ text, charStart, charEnd, highlightRef }) {
   if (charStart == null || charEnd == null || charStart >= text.length) {
@@ -39,18 +44,20 @@ const Story = () => {
   const [storyData, setStoryData] = useState(null);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [highlightRange, setHighlightRange] = useState({ start: null, end: null });
   const [autoScroll, setAutoScroll] = useState(true);
-  const [readingSpeed, setReadingSpeed] = useState(0.75);
+  const [readingSpeed, setReadingSpeed] = useState(1.0);
 
-  const utteranceRef = useRef(null);
-  const highlightRef = useRef(null);
-  // Refs so closures inside utterance callbacks always see fresh values
-  const autoScrollRef = useRef(autoScroll);
-  const pagesRef = useRef(null);
+  const audioRef      = useRef(null);   // HTMLAudioElement for ElevenLabs
+  const wordTimingsRef = useRef([]);     // word timing from ElevenLabs
+  const highlightRef  = useRef(null);
+  // Refs so closures in audio callbacks always see fresh state
+  const autoScrollRef       = useRef(autoScroll);
+  const pagesRef            = useRef(null);
   const currentPageIndexRef = useRef(0);
-  const shouldAutoPlayRef = useRef(false);
-  const readingSpeedRef = useRef(readingSpeed);
+  const shouldAutoPlayRef   = useRef(false);
+  const readingSpeedRef     = useRef(readingSpeed);
 
   const navigate = useNavigate();
 
@@ -88,22 +95,29 @@ const Story = () => {
   }, [highlightRange, autoScroll]);
 
   const stopSpeech = useCallback(() => {
-    window.speechSynthesis.cancel();
-    utteranceRef.current = null;
+    // Stop ElevenLabs audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    // Also cancel any fallback SpeechSynthesis
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    wordTimingsRef.current = [];
     shouldAutoPlayRef.current = false;
     setIsPlaying(false);
+    setIsLoadingAudio(false);
     setHighlightRange({ start: null, end: null });
   }, []);
 
-  const speakPage = useCallback((text) => {
-    stopSpeech();
-    if (!text || !('speechSynthesis' in window)) return;
+  // SpeechSynthesis fallback — used only when ElevenLabs is unavailable
+  const speakWithSynthesis = useCallback((text) => {
+    if (!('speechSynthesis' in window)) return;
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = readingSpeedRef.current;
+    utterance.rate  = readingSpeedRef.current;
     utterance.pitch = 1.1;
 
-    const voices = window.speechSynthesis.getVoices();
+    const voices    = window.speechSynthesis.getVoices();
     const preferred = voices.find(v =>
       v.name.toLowerCase().includes('samantha') ||
       v.name.toLowerCase().includes('karen') ||
@@ -120,12 +134,9 @@ const Story = () => {
       }
     };
 
-    utterance.onend = () => {
+    const onDone = () => {
       setIsPlaying(false);
       setHighlightRange({ start: null, end: null });
-      utteranceRef.current = null;
-
-      // Auto-advance to next page if auto-scroll is on
       if (autoScrollRef.current && pagesRef.current) {
         const nextIdx = currentPageIndexRef.current + 1;
         if (nextIdx < pagesRef.current.length) {
@@ -135,16 +146,78 @@ const Story = () => {
       }
     };
 
-    utterance.onerror = () => {
-      setIsPlaying(false);
-      setHighlightRange({ start: null, end: null });
-      utteranceRef.current = null;
-    };
+    utterance.onend   = onDone;
+    utterance.onerror = () => { setIsPlaying(false); setHighlightRange({ start: null, end: null }); };
 
-    utteranceRef.current = utterance;
     setIsPlaying(true);
     window.speechSynthesis.speak(utterance);
-  }, [stopSpeech]);
+  }, []);
+
+  const speakPage = useCallback(async (text) => {
+    stopSpeech();
+    if (!text) return;
+
+    setIsLoadingAudio(true);
+
+    try {
+      const result = await generateWithTimestamps(text, {
+        speed: clampSpeed(readingSpeedRef.current)
+      });
+
+      if (!result) {
+        // ElevenLabs unavailable — fall back silently
+        setIsLoadingAudio(false);
+        speakWithSynthesis(text);
+        return;
+      }
+
+      const { audioUrl, wordTimings } = result;
+      wordTimingsRef.current = wordTimings;
+
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.addEventListener('timeupdate', () => {
+        const t = audio.currentTime;
+        const timings = wordTimingsRef.current;
+        const hit = timings.find(w => t >= w.startTime && t <= w.endTime);
+        if (hit) {
+          setHighlightRange({ start: hit.charStart, end: hit.charEnd });
+        }
+      });
+
+      audio.onended = () => {
+        audioRef.current = null;
+        setIsPlaying(false);
+        setHighlightRange({ start: null, end: null });
+        // Revoke object URL to free memory
+        URL.revokeObjectURL(audioUrl);
+        if (autoScrollRef.current && pagesRef.current) {
+          const nextIdx = currentPageIndexRef.current + 1;
+          if (nextIdx < pagesRef.current.length) {
+            shouldAutoPlayRef.current = true;
+            setCurrentPageIndex(nextIdx);
+          }
+        }
+      };
+
+      audio.onerror = () => {
+        audioRef.current = null;
+        setIsPlaying(false);
+        setIsLoadingAudio(false);
+        setHighlightRange({ start: null, end: null });
+      };
+
+      setIsLoadingAudio(false);
+      setIsPlaying(true);
+      await audio.play();
+
+    } catch (err) {
+      console.error('speakPage error:', err);
+      setIsLoadingAudio(false);
+      speakWithSynthesis(text);
+    }
+  }, [stopSpeech, speakWithSynthesis]);
 
   // When page changes due to auto-advance, auto-play the new page
   useEffect(() => {
@@ -167,18 +240,18 @@ const Story = () => {
     setCurrentPageIndex(newIndex);
   }, [stopSpeech]);
 
-  const handleSpeedChange = (e) => {
-    const newSpeed = parseFloat(e.target.value);
+  const handleSpeedChange = (newSpeed) => {
     setReadingSpeed(newSpeed);
     readingSpeedRef.current = newSpeed;
-    // If currently playing, restart at new speed
-    if (isPlaying) {
-      speakPage(currentPageText);
-    }
+    // Stop current playback — ElevenLabs audio must be regenerated at the new speed
+    if (isPlaying || isLoadingAudio) stopSpeech();
   };
 
   useEffect(() => {
-    return () => { window.speechSynthesis.cancel(); };
+    return () => {
+      if (audioRef.current) audioRef.current.pause();
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    };
   }, []);
 
   const goToDone = () => { stopSpeech(); navigate('/done'); };
@@ -284,11 +357,11 @@ const Story = () => {
         {/* ── Narrator controls ── */}
         <div className="story-controls">
           <button
-            className={`play-btn ${isPlaying ? 'playing' : ''}`}
+            className={`play-btn ${isPlaying ? 'playing' : ''} ${isLoadingAudio ? 'loading' : ''}`}
             onClick={handlePlayPause}
-            disabled={!currentPageText}
+            disabled={!currentPageText || isLoadingAudio}
           >
-            {isPlaying ? '⏸️ Pause' : '🔊 Read This Page'}
+            {isLoadingAudio ? '⏳ Loading voice…' : isPlaying ? '⏸️ Pause' : '🔊 Read This Page'}
           </button>
 
           <div className="narrator-settings">
@@ -305,19 +378,21 @@ const Story = () => {
               <span className="setting-value">{autoScroll ? 'On' : 'Off'}</span>
             </div>
 
-            {/* Speed slider */}
+            {/* Speed buttons */}
             <div className="setting-item">
               <span className="setting-label">Speed</span>
-              <input
-                type="range"
-                min="0.5"
-                max="1.25"
-                step="0.25"
-                value={readingSpeed}
-                onChange={handleSpeedChange}
-                className="speed-slider"
-              />
-              <span className="setting-value">{SPEED_LABELS[readingSpeed] ?? `${readingSpeed}x`}</span>
+              <div className="speed-btn-group">
+                {SPEED_OPTIONS.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`speed-option${readingSpeed === value ? ' active' : ''}`}
+                    onClick={() => handleSpeedChange(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 

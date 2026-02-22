@@ -26,7 +26,8 @@ Respond with ONLY valid JSON in this exact shape (no markdown, no extra text):
   "characters": [
     {
       "name": "short name or role (e.g. 'the blue cat', 'a small girl')",
-      "appearance": "2–3 visual details: colors, clothing, features (e.g. 'blue fur, big green eyes, red scarf')"
+      "gender": "boy/girl/male/female/neutral — infer from the drawing; never leave ambiguous",
+      "appearance": "3–4 visual details: gender, colors, clothing, hair/fur, distinguishing features (e.g. 'girl, brown pigtails, yellow dress, red shoes, freckles')"
     }
   ],
   "setting": "one short sentence describing where the scene takes place",
@@ -40,6 +41,7 @@ Respond with ONLY valid JSON in this exact shape (no markdown, no extra text):
 Rules:
 - Keep all descriptions short and child-friendly.
 - If the image is unclear, make reasonable, positive assumptions.
+- GENDER must be captured and written into appearance for every character. This is used to lock character gender across all generated images.
 - For each character, capture enough visual detail so an image generator can reproduce the character consistently across multiple scenes.
 - If there are no clear characters, invent one friendly character that fits the drawing.`;
 
@@ -76,25 +78,27 @@ function buildCharacterDNA(parsedJson) {
   const chars = parsedJson?.characters || [];
   if (chars.length === 0) return '';
   const lines = chars.map((c, i) => {
-    const name = c.name || c;
-    const look = c.appearance || '';
-    return `Character ${i + 1}: "${name}" — ${look}`.trim();
+    const name   = c.name   || c;
+    const gender = c.gender ? `${c.gender}, ` : '';
+    const look   = c.appearance || '';
+    // Explicitly prefix gender so image model never guesses or flips it
+    return `Character ${i + 1}: "${name}" — ${gender}${look}`.trim();
   });
   return lines.join('. ') + '.';
 }
 
 /**
- * ILLUSTRATION_STYLE_SUFFIX — appended AFTER the scene description in every image prompt.
+ * ILLUSTRATION_STYLE_BLOCK — woven into the narrative image prompt.
  *
- * Imagen 4 best practice: lead with the scene/subject, then add style modifiers.
- * Keep total prompt under 480 tokens. This suffix is ~35 tokens.
+ * gemini-2.5-flash-image (Nano Banana) understands natural language deeply.
+ * Use a flowing description rather than comma-separated keywords.
  */
-const ILLUSTRATION_STYLE_SUFFIX =
-  'vibrant 2D flat children\'s picture book illustration, ' +
-  'bright saturated colors, clean bold outlines, ' +
-  'cute expressive characters with large friendly eyes, ' +
-  'detailed storybook background, ' +
-  'by a professional children\'s book illustrator, high quality, detailed';
+const ILLUSTRATION_STYLE_BLOCK =
+  'The illustration is in a vibrant 2D flat children\'s picture book style — ' +
+  'bold clean outlines, bright saturated colors, cute expressive characters with large friendly eyes, ' +
+  'and a richly detailed storybook background. ' +
+  'All character appearances (gender, hair, fur color, skin tone, clothing, species) must remain ' +
+  'exactly consistent with how they are described — never change these between pages.';
 
 /**
  * getSceneExpansionPrompt — STEP 1 before image generation.
@@ -113,56 +117,58 @@ function getSceneExpansionPrompt(pageText, previousSummary = '', characterDNA = 
   const isLast  = pageNum === totalPages;
 
   const stageNote = isFirst
-    ? 'This is the OPENING scene. Establish the world and main character warmly and invitingly.'
+    ? 'This is the OPENING scene — establish the world and introduce the main character warmly.'
     : isLast
-    ? 'This is the FINAL scene. Show resolution, happiness, and a satisfying sense of completion.'
-    : `This is scene ${pageNum} of ${totalPages} — mid-story. Show clear narrative progress.`;
+    ? 'This is the FINAL scene — show resolution, joy, and a satisfying sense of completion.'
+    : `Scene ${pageNum} of ${totalPages} — mid-story. Show clear visual progress from the previous scene.`;
 
   const progressionBlock = previousSummary
-    ? `\nPrevious illustration summary: "${previousSummary}"\nCRITICAL: This new scene must look CLEARLY DIFFERENT from the previous one. Change: the location OR time of day OR weather OR the characters' positions/actions OR the color mood — ideally several of these at once. The reader must be able to tell the story has moved forward.`
+    ? `\nPrevious scene: "${previousSummary.slice(0, 250)}"\nIMPORTANT: The new scene must look VISIBLY DIFFERENT — change the location, time of day, weather, characters' positions/actions, or dominant colors. The reader must instantly see that the story has moved forward.`
     : '';
 
-  return `You are a storyboard artist writing a visual brief for a children's picture-book illustrator.
+  return `You are a storyboard artist for a children's picture book. Write a concise visual brief that an illustrator can paint directly.
 
-Story page text: "${pageText}"
-${characterDNA ? `Characters: ${characterDNA}` : ''}${progressionBlock}
+PAGE TEXT (must be illustrated accurately): "${pageText}"
+${characterDNA ? `\nCharacters: ${characterDNA}` : ''}${progressionBlock}
 ${stageNote}
 
-Write 2–3 sentences describing what to paint. Include:
-- The main action and characters' expressions/poses in the foreground
-- The setting: time of day, weather, indoor/outdoor, key colors and lighting mood
-- One unique visual detail that makes this scene memorable (e.g. fireflies, falling snow, rainbow, etc.)
-- Camera framing (wide shot / close-up / bird's-eye / low angle)
+RULES:
+1. The image MUST clearly show the specific event or action described in the page text above. Do not substitute or add a different event.
+2. Never change any character's gender, species, hair/fur color, skin tone, or clothing from the descriptions above.
+3. Keep the tone warm, bright, and child-friendly.
 
-Be specific and vivid. Output ONLY the description — no labels or preamble.`;
+Write exactly 2 sentences:
+- Sentence 1: What is happening in the foreground — the characters, their specific action from the page text, and their expressions.
+- Sentence 2: The setting details — time of day, weather, background environment, dominant color palette, lighting mood, and one memorable visual detail (sparkles, falling leaves, lanterns, etc.).
+
+Output ONLY the 2-sentence description. No headings, no labels.`;
 }
 
 /**
- * getPageIllustrationPrompt — STEP 2, image generation.
+ * getPageIllustrationPrompt — STEP 2, image generation prompt.
  *
- * Imagen 4 format: scene description FIRST, style modifiers AFTER.
- * Total prompt target: well under 480 tokens.
+ * gemini-2.5-flash-image (Nano Banana) responds best to rich narrative paragraphs,
+ * not keyword lists. Compose a single flowing description: scene first, then
+ * character references woven in, then style context at the end.
  *
- * @param {string} expandedScene  - Output of getSceneExpansionPrompt (2–3 sentences)
- * @param {string} characterDNA   - Character appearance block
+ * @param {string} expandedScene  - Visual brief from getSceneExpansionPrompt
+ * @param {string} characterDNA   - Character appearance block from buildCharacterDNA
  * @param {number} pageNum        - 1-based page index
  * @param {number} totalPages     - Total pages
  */
 function getPageIllustrationPrompt(expandedScene, characterDNA = '', pageNum = 1, totalPages = 1) {
-  const parts = [];
+  const scenePart = expandedScene.trim();
 
-  // Scene first (Imagen best practice: subject/action leads the prompt)
-  parts.push(expandedScene.trim());
+  const charPart = characterDNA
+    ? `The characters in this scene: ${characterDNA}`
+    : '';
 
-  // Character reference (keep concise — DNA is already brief)
-  if (characterDNA) {
-    parts.push(`Characters: ${characterDNA}`);
-  }
+  // Build a single narrative paragraph for Gemini's language model
+  const parts = [scenePart];
+  if (charPart) parts.push(charPart);
+  parts.push(ILLUSTRATION_STYLE_BLOCK);
 
-  // Style modifiers appended last
-  parts.push(ILLUSTRATION_STYLE_SUFFIX);
-
-  return parts.join('. ');
+  return parts.join(' ');
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -201,12 +207,13 @@ const SCENE_IDENTIFICATION = `You are an art director for a children's book. For
 
 For each moment:
 1. Write a short scene description (1–2 sentences) specific enough to send directly to an image generator.
-2. Name every character in the scene and describe their appearance briefly so the image generator draws them consistently.
+2. Name every character in the scene and describe their appearance including gender, colors, clothing so the image generator draws them consistently across all pages.
 3. Include setting details (indoor/outdoor, time of day, weather).
 4. Child-friendly, warm, simple imagery. No dark or violent content.
+5. NEVER change a character's gender, species, hair color, or clothing between scenes.
 
 Respond with ONLY a JSON array of strings. No markdown.
-Example: ["A small rabbit in a blue coat stands at the edge of a sunlit forest, looking curious.", "The rabbit and a friendly orange fox share red berries under a big oak tree at sunset."]`;
+Example: ["A small girl rabbit in a blue coat stands at the edge of a sunlit forest, looking curious.", "The same girl rabbit and a friendly male orange fox share red berries under a big oak tree at sunset."]`;
 
 function getSceneIdentificationPrompt(simplifiedSection) {
   return `${SCENE_IDENTIFICATION}
@@ -221,25 +228,26 @@ ${simplifiedSection}
  * BOOK_ILLUSTRATION_STYLE — style prefix for book-conversion illustrations.
  * Same visual voice as ILLUSTRATION_STYLE_PREFIX but for converted books.
  */
-const BOOK_ILLUSTRATION_STYLE = [
-  '2D flat digital illustration, vibrant children\'s picture book style.',
-  'Bright saturated colors, bold primaries and warm pastels.',
-  'Clean outlines, flat color fills, soft rounded shapes.',
-  'Characters have large friendly eyes and expressive faces.',
-  'Rich storybook backgrounds, clear foreground/midground/background.',
-  'Magical warm atmosphere, high contrast, crisp and clean.',
-  'Ages 4–8 appropriate, no dark or complex imagery.'
-].join(' ');
+const BOOK_ILLUSTRATION_STYLE =
+  'The illustration is in a vibrant 2D flat children\'s picture book style with bold clean outlines, ' +
+  'bright saturated colors (bold primaries and warm pastels), and expressive characters with large friendly eyes. ' +
+  'Rich storybook backgrounds with clear foreground, midground, and background layers. ' +
+  'Warm magical atmosphere, crisp and clean, suitable for ages 4–8. ' +
+  'Keep all character appearances exactly consistent across every scene — same gender, colors, and clothing.';
 
 /**
  * getBookSceneIllustrationPrompt — image gen for one book scene.
  * Model: gemini-2.5-flash-image
  */
 function getBookSceneIllustrationPrompt(sceneDescription, characterSummary = '') {
-  const parts = [BOOK_ILLUSTRATION_STYLE];
-  if (characterSummary) parts.push(`Characters (keep consistent): ${characterSummary}`);
-  parts.push(`Scene to illustrate: ${sceneDescription}`);
-  return parts.join('\n');
+  const scenePart = sceneDescription.trim();
+  const charPart  = characterSummary
+    ? `The characters in this scene: ${characterSummary}`
+    : '';
+  const parts = [scenePart];
+  if (charPart) parts.push(charPart);
+  parts.push(BOOK_ILLUSTRATION_STYLE);
+  return parts.join(' ');
 }
 
 /**
@@ -286,7 +294,8 @@ module.exports = {
   DRAWING_PARSE_JSON,
   getStoryFromJsonPrompt,
   buildCharacterDNA,
-  ILLUSTRATION_STYLE_SUFFIX,
+  ILLUSTRATION_STYLE_BLOCK,
+  ILLUSTRATION_STYLE_SUFFIX: ILLUSTRATION_STYLE_BLOCK, // backward-compat alias
   getSceneExpansionPrompt,
   getPageIllustrationPrompt,
   getSimplifyPrompt,

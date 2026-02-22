@@ -165,14 +165,18 @@
   background: linear-gradient(135deg, #48c78e, #06d6a0);
   color: white;
   border: none;
-  padding: 14px 32px;
+  /* Fixed dimensions so the button never reflows when the label changes */
+  min-width: 210px;
+  padding: 14px 24px;
   font-size: 1.1rem;
   font-weight: bold;
   border-radius: 28px;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: background 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
   align-self: flex-start;
   box-shadow: 0 5px 16px rgba(6, 214, 160, 0.38);
+  text-align: center;
+  white-space: nowrap;
 }
 
 .play-btn:hover:not(:disabled) {
@@ -189,6 +193,18 @@
 .play-btn.playing {
   background: linear-gradient(135deg, #ff6b6b, #ee5a24);
   box-shadow: 0 5px 16px rgba(238, 90, 36, 0.38);
+}
+
+.play-btn.loading {
+  background: linear-gradient(135deg, #a78bfa, #7c3aed);
+  box-shadow: 0 5px 16px rgba(124, 58, 237, 0.38);
+  cursor: wait;
+  animation: pulse-loading 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse-loading {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.65; }
 }
 
 /* ── Narrator settings row ── */
@@ -259,36 +275,38 @@
   left: 3px;
 }
 
-/* ── Speed slider ── */
-.speed-slider {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 120px;
-  height: 6px;
-  border-radius: 3px;
-  background: #e0e0e0;
-  outline: none;
-  cursor: pointer;
+/* ── Speed segmented buttons ── */
+.speed-btn-group {
+  display: flex;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 2px solid #667eea;
 }
 
-.speed-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #667eea;
-  cursor: pointer;
-  box-shadow: 0 1px 4px rgba(102, 126, 234, 0.5);
-}
-
-.speed-slider::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #667eea;
-  cursor: pointer;
+.speed-option {
+  flex: 1;
+  padding: 5px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: white;
+  color: #667eea;
   border: none;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+  white-space: nowrap;
+}
+
+.speed-option:not(:last-child) {
+  border-right: 1.5px solid #667eea;
+}
+
+.speed-option.active {
+  background: #667eea;
+  color: white;
+}
+
+.speed-option:hover:not(.active) {
+  background: #f0f2ff;
 }
 
 /* ── Language tag ── */
