@@ -70,7 +70,7 @@
 }
 
 .progress-bar {
-  width: 100%;
+  width: 300px;
   height: 8px;
   background: rgba(255,255,255,0.3);
   border-radius: 4px;
