@@ -11,12 +11,47 @@
 .header {
   text-align: center;
   margin-bottom: 1px;
+  position: relative;
 }
 
 .header h1 {
   color: white;
   font-size: 6rem;
   text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.greeting {
+  color: white;
+  font-size: 1.4rem;
+  margin: 0;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+  font-weight: 600;
+}
+
+.account-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.25);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+  z-index: 5;
+}
+
+.account-btn:hover {
+  background: rgba(255, 255, 255, 0.45);
+  transform: scale(1.1);
+}
+
+.account-icon {
+  font-size: 1.5rem;
 }
 
 .upload-footer-links {

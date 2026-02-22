@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { generateStory } from '../services/geminiService';
 import storyService from '../services/storyService';
@@ -13,19 +13,16 @@ const loadingMessages = [
   "Almost ready to read!"
 ];
 
-const loadingMessages = [
-  "Creating your magical story...",
-  "Adding characters and adventures...",
-  "Sprinkling some magic dust...",
-  "Almost ready to read!"
-];
-
 const Loading = () => {
   const [loadingText, setLoadingText] = useState(loadingMessages[0]);
   const [progress, setProgress] = useState(0);
   const navigate = useNavigate();
+  const hasStarted = useRef(false);
 
   useEffect(() => {
+    if (hasStarted.current) return;
+    hasStarted.current = true;
+
     const generateUserStory = async () => {
       try {
         const storyData = JSON.parse(localStorage.getItem('currentStory'));
@@ -59,22 +56,37 @@ const Loading = () => {
         const fullText = data.fullText || data.story || '';
         const pages = data.pages || [{ text: fullText, imageUrl: null }];
 
+        const autoTitle = storyData.description
+          ? storyData.description.charAt(0).toUpperCase() +
+            storyData.description.slice(1, 60).trim() +
+            (storyData.description.length > 60 ? '...' : '')
+          : 'My Story';
+
         const completeStory = {
           ...storyData,
           pages,
           fullText,
           storyText: fullText,
           story: fullText,
-          title: storyData.title || `Story #${Date.now()}`,
+          title: storyData.title || autoTitle,
           createdAt: storyData.createdAt || new Date().toISOString()
         };
 
-        // Save to backend (it handles its own storage)
+        // Save to backend -- only send fields the API expects
         try {
-          await storyService.createStory({
-            ...completeStory,
-            storyText: fullText
-          });
+          const backendPayload = {
+            title: completeStory.title,
+            description: completeStory.description,
+            storyText: fullText,
+            language: completeStory.language,
+            translationLanguage: completeStory.translationLanguage || null,
+            imageFileName: completeStory.imageFileName || null,
+          };
+          // Only include imageUrl if it's a real remote URL (not blob: or data:)
+          if (completeStory.imageUrl && !completeStory.imageUrl.startsWith('blob:') && !completeStory.imageUrl.startsWith('data:')) {
+            backendPayload.imageUrl = completeStory.imageUrl;
+          }
+          await storyService.createStory(backendPayload);
         } catch (error) {
           console.error('Error saving story to backend:', error);
         }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import storyService from '../services/storyService';
 import './Library.css';
 import bgImage from '../assets/Jillian-BG.png';
@@ -7,19 +8,20 @@ import bookPjImage from '../assets/book-PJ.PNG';
 
 const Library = () => {
   const [stories, setStories] = useState([]);
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     loadStories();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const loadStories = async () => {
     try {
-      const result = await storyService.getAllStories();
+      const result = await storyService.getAllStories(user?.id || null);
       setStories(result.stories);
     } catch (error) {
       console.error('Error loading stories:', error);
-      // Fallback to localStorage
       const userStories = JSON.parse(localStorage.getItem('userStories') || '[]');
       setStories(userStories);
     }
@@ -88,16 +90,20 @@ const Library = () => {
             {stories.map((story, index) => (
               <div key={index} className="story-card">
                 <div className="story-image">
-                  <img
-                    src={story.imagePreview}
-                    alt={`Story ${index + 1}`}
-                    className="story-thumbnail"
-                  />
+                  {(story.imagePreview || story.imageUrl) ? (
+                    <img
+                      src={story.imagePreview || story.imageUrl}
+                      alt={`Story ${index + 1}`}
+                      className="story-thumbnail"
+                    />
+                  ) : (
+                    <div className="story-thumbnail-placeholder">📖</div>
+                  )}
                 </div>
 
                 <div className="story-details">
                   <h3 className="story-title">
-                    Story #{stories.length - index}
+                    {story.title || `Story #${stories.length - index}`}
                   </h3>
 
                   <p className="story-description">

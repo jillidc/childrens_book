@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import storyService from '../services/storyService';
 import './Upload.css';
 import bgImage from '../assets/Jillian-BG.png';
@@ -31,6 +32,7 @@ const Upload = () => {
   const [description, setDescription] = useState('');
   const [language, setLanguage] = useState('english');
   const [translationLanguage, setTranslationLanguage] = useState('');
+  const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const handleImageUpload = (event) => {
@@ -47,35 +49,32 @@ const Upload = () => {
     if (image && description.trim()) {
       const thumbnail = await createThumbnail(imagePreview);
 
+      let remoteUrl = null;
+      let fileName = null;
       try {
         const uploadResult = await storyService.uploadImage(image, {
           maxWidth: 1200,
           quality: 85
         });
-
-        const storyData = {
-          description,
-          language,
-          translationLanguage,
-          imageUrl: uploadResult.url,
-          imageFileName: uploadResult.originalName,
-          imagePreview: thumbnail || uploadResult.url
-        };
-
-        localStorage.setItem('currentStory', JSON.stringify(storyData));
-        navigate('/loading');
+        if (!uploadResult.isLocal) {
+          remoteUrl = uploadResult.url;
+          fileName = uploadResult.originalName;
+        }
       } catch (error) {
-        console.error('Error uploading image:', error);
-
-        const storyData = {
-          description,
-          language,
-          translationLanguage,
-          imagePreview: thumbnail
-        };
-        localStorage.setItem('currentStory', JSON.stringify(storyData));
-        navigate('/loading');
+        console.warn('Image upload failed, will use data URL for generation:', error.message);
       }
+
+      const storyData = {
+        description,
+        language,
+        translationLanguage,
+        imageUrl: remoteUrl || imagePreview,
+        imageFileName: fileName || image.name,
+        imagePreview: thumbnail || remoteUrl || null
+      };
+
+      localStorage.setItem('currentStory', JSON.stringify(storyData));
+      navigate('/loading');
     }
   };
 
@@ -86,7 +85,15 @@ const Upload = () => {
   return (
     <div className="upload-screen" style={{ backgroundImage: `url(${bgImage})` }}>
       <div className="header">
+        {isAuthenticated && (
+          <button className="account-btn" onClick={() => navigate('/account')} title="Account Settings">
+            <span className="account-icon">&#9881;&#65039;</span>
+          </button>
+        )}
         <h1>Draw My Story</h1>
+        {isAuthenticated && user && (
+          <p className="greeting">Hi, {user.username || user.email.split('@')[0]}!</p>
+        )}
       </div>
 
       <div

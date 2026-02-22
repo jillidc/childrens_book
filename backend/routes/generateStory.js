@@ -90,7 +90,7 @@ function getFallbackStory(description, language) {
 // POST /api/generate-story
 router.post('/', async (req, res) => {
   try {
-    const { error, value } = generateStorySchema.validate(req.body);
+    const { error, value } = generateStorySchema.validate(req.body, { stripUnknown: true });
     if (error) {
       return res.status(400).json({ success: false, error: error.details[0].message });
     }
