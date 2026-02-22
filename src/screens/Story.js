@@ -69,6 +69,8 @@ const Story = () => {
   const totalSpreadsRef = useRef(1);
   const speakPageRef = useRef(null);
   const autoAdvanceRef = useRef(true);
+  const audioCacheRef = useRef(new Map());
+  const preloadPromisesRef = useRef(new Map());
   const navigate = useNavigate();
 
   const pages = useMemo(
@@ -94,12 +96,32 @@ const Story = () => {
     }
   }, [navigate]);
 
+  // Preload ElevenLabs audio for every spread as soon as pages are available
+  useEffect(() => {
+    if (pages.length === 0) return;
+    const numSpreads = Math.max(1, Math.ceil(pages.length / 2));
+
+    for (let s = 0; s < numSpreads; s++) {
+      if (audioCacheRef.current.has(s) || preloadPromisesRef.current.has(s)) continue;
+
+      const leftText  = pages[s * 2]?.text || '';
+      const rightText = pages[s * 2 + 1]?.text || '';
+      const spreadText = [leftText, rightText].filter(Boolean).join(' ');
+      if (!spreadText) continue;
+
+      const promise = generateWithTimestamps(spreadText)
+        .then(result => {
+          if (result) audioCacheRef.current.set(s, result);
+        })
+        .catch(() => {});
+      preloadPromisesRef.current.set(s, promise);
+    }
+  }, [pages]);
+
   const stopSpeech = useCallback(() => {
     if (audioRef.current) {
-      const oldSrc = audioRef.current.src;
       audioRef.current.pause();
       audioRef.current = null;
-      if (oldSrc.startsWith('blob:')) URL.revokeObjectURL(oldSrc);
     }
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     utteranceRef.current = null;
@@ -110,7 +132,15 @@ const Story = () => {
   }, []);
 
   useEffect(() => {
-    return () => { stopSpeech(); };
+    const cache = audioCacheRef.current;
+    return () => {
+      stopSpeech();
+      for (const entry of cache.values()) {
+        if (entry?.audioUrl?.startsWith('blob:')) URL.revokeObjectURL(entry.audioUrl);
+      }
+      cache.clear();
+      preloadPromisesRef.current.clear();
+    };
   }, [stopSpeech]);
 
   const speakWithSynthesis = useCallback((text) => {
@@ -145,7 +175,7 @@ const Story = () => {
             const nextRight = pagesRef.current[nextSpread * 2 + 1]?.text || '';
             const nextText = [nextLeft, nextRight].filter(Boolean).join(' ');
             if (nextText && speakPageRef.current) {
-              setTimeout(() => speakPageRef.current(nextText), 200);
+              setTimeout(() => speakPageRef.current(nextText, nextSpread), 200);
             }
           }, 400);
         }
@@ -161,14 +191,24 @@ const Story = () => {
     window.speechSynthesis.speak(utterance);
   }, []);
 
-  const speakPage = useCallback(async (text) => {
+  const speakPage = useCallback(async (text, spreadIdx) => {
     stopSpeech();
     if (!text) return;
 
     setIsLoadingAudio(true);
 
     try {
-      const result = await generateWithTimestamps(text);
+      // Check the preload cache first; fall back to a live request
+      let result = audioCacheRef.current.get(spreadIdx) || null;
+      if (!result) {
+        const pending = preloadPromisesRef.current.get(spreadIdx);
+        if (pending) await pending;
+        result = audioCacheRef.current.get(spreadIdx) || null;
+      }
+      if (!result) {
+        result = await generateWithTimestamps(text);
+        if (result) audioCacheRef.current.set(spreadIdx, result);
+      }
 
       if (!result) {
         setIsLoadingAudio(false);
@@ -193,12 +233,10 @@ const Story = () => {
       });
 
       audio.onended = () => {
-        const src = audio.src;
         audioRef.current = null;
         wordTimingsRef.current = [];
         setIsPlaying(false);
         setHighlightRange({ start: null, end: null });
-        if (src.startsWith('blob:')) URL.revokeObjectURL(src);
 
         if (autoAdvanceRef.current) {
           const nextSpread = currentSpreadRef.current + 1;
@@ -213,7 +251,7 @@ const Story = () => {
               const nextRight = pagesRef.current[nextSpread * 2 + 1]?.text || '';
               const nextText = [nextLeft, nextRight].filter(Boolean).join(' ');
               if (nextText && speakPageRef.current) {
-                setTimeout(() => speakPageRef.current(nextText), 200);
+                setTimeout(() => speakPageRef.current(nextText, nextSpread), 200);
               }
             }, 400);
           }
@@ -252,9 +290,9 @@ const Story = () => {
     } else {
       const left = pages[leftIdx]?.text || '';
       const right = pages[rightIdx]?.text || '';
-      speakPage([left, right].filter(Boolean).join(' '));
+      speakPage([left, right].filter(Boolean).join(' '), currentSpread);
     }
-  }, [isPlaying, isLoadingAudio, stopSpeech, speakPage, pages, leftIdx, rightIdx]);
+  }, [isPlaying, isLoadingAudio, stopSpeech, speakPage, pages, leftIdx, rightIdx, currentSpread]);
 
   const goToNextSpread = useCallback(() => {
     if (currentSpread < totalSpreads - 1 && !isFlipping) {

@@ -52,29 +52,31 @@ async function generateStoryPages(parsedJsonOrDescription, language, useJson) {
 }
 
 /**
- * Generate illustrations SEQUENTIALLY to stay within preview-model rate limits.
+ * Generate illustrations with a two-phase pipeline for speed:
  *
- * Two-step pipeline per page:
- *   1. TEXT MODEL  — expand the short page sentence into a rich visual brief
- *                    that includes scene progression context from the previous page.
- *   2. IMAGE MODEL — render the expanded brief (no reference drawing passed,
- *                    so each image is creative rather than a copy of the upload).
+ *   Phase 1 (sequential, fast): expand every page sentence into a rich visual
+ *     brief.  These are chained — each expansion receives the previous scene
+ *     summary so the story visually progresses.
+ *
+ *   Phase 2 (parallel, slow): fire ALL image-generation + upload calls at once
+ *     via Promise.allSettled().  Each call is independent once the expanded
+ *     scene text is known.
  *
  * The reference drawing is intentionally NOT forwarded to the image model so
  * illustrations are creative and distinct rather than all resembling the upload.
  */
 async function generatePageImages(pages, parsedJson) {
   const characterDNA = prompts.buildCharacterDNA(parsedJson);
-  const results = [];
+
+  // ── Phase 1: sequential scene expansions (fast, ~1-2s each) ──
+  const expandedScenes = [];
   let previousSceneSummary = '';
 
   for (let i = 0; i < pages.length; i++) {
     const pageText = pages[i];
     const pageNum  = i + 1;
-
-    // ── Step 1: expand page text → rich visual scene description ──
-    // Use EXPANSION_MODEL (gemini-2.0-flash, 15 RPM) not TEXT_MODEL (gemini-2.5-flash, 5 RPM)
     let expandedScene = pageText;
+
     try {
       const expansionPrompt = prompts.getSceneExpansionPrompt(
         pageText, previousSceneSummary, characterDNA, pageNum, pages.length
@@ -89,24 +91,110 @@ async function generatePageImages(pages, parsedJson) {
       console.warn(`[Page ${pageNum}] Scene expansion failed, using raw text: ${e.message}`);
     }
 
-    // ── Step 2: generate illustration from expanded scene ──
-    const prompt = prompts.getPageIllustrationPrompt(expandedScene, characterDNA, pageNum, pages.length);
-    try {
-      // null referenceImage — let the model be creative, not bound to the drawing
+    expandedScenes.push(expandedScene);
+    previousSceneSummary = expandedScene.slice(0, 350);
+  }
+
+  // ── Phase 2: parallel image generation + upload ──
+  const imagePromises = pages.map((pageText, i) => {
+    const pageNum = i + 1;
+    const prompt = prompts.getPageIllustrationPrompt(expandedScenes[i], characterDNA, pageNum, pages.length);
+
+    return (async () => {
       const imageResult = await gemini.generateImage(prompt, null, { aspectRatio: '4:3' });
       const buffer = Buffer.from(imageResult.data, 'base64');
       const url = await uploadOrDataUrl(buffer, imageResult.mimeType || 'image/png');
-      results.push({ text: pageText, imageUrl: url });
-      // Store the expanded scene as context for the next page's progression brief
-      previousSceneSummary = expandedScene.slice(0, 350);
-    } catch (err) {
+      return { text: pageText, imageUrl: url };
+    })().catch(err => {
       console.warn(`[Page ${pageNum}] Image gen failed: ${err.message}`);
-      results.push({ text: pageText, imageUrl: null });
-      // Even on failure, carry forward what we planned so the next page still progresses
-      previousSceneSummary = expandedScene.slice(0, 350);
+      return { text: pageText, imageUrl: null };
+    });
+  });
+
+  return Promise.all(imagePromises);
+}
+
+async function generateTitleAndSummary(fullText, pages) {
+  let generatedTitle = null;
+  let generatedSummary = null;
+
+  const firstPageFirstWords = pages.length > 0
+    ? pages[0].split(/\s+/).slice(0, 8).join(' ').replace(/[.!?,;:]+$/, '').trim().toLowerCase()
+    : '';
+
+  function looksLikeStorySentence(title) {
+    if (!title || typeof title !== 'string') return true;
+    const t = title.trim();
+    if (t.split(/\s+/).length > 8) return true;
+    if (t.length > 60) return true;
+    if (firstPageFirstWords && t.toLowerCase().slice(0, 40) === firstPageFirstWords.slice(0, 40)) return true;
+    return false;
+  }
+
+  try {
+    const titlePrompt = `You are a children's book editor. Given this children's story, create:
+1. A short, catchy BOOK TITLE (max 8 words) — creative and fun, NOT a repeat of the first sentence or the story description. Examples: "The Brave Little Dragon", "Where the Crayons Dance".
+2. A one-sentence summary (max 120 characters) that captures the heart of the story for the back cover.
+
+Story:
+${fullText.slice(0, 1500)}
+
+Respond with ONLY valid JSON, no markdown or extra text:
+{"title": "...", "summary": "..."}`;
+    const titleGenConfig = {
+      model: gemini.EXPANSION_MODEL,
+      temperature: 0.9,
+      maxOutputTokens: 4096,
+      config: {
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
+        ]
+      }
+    };
+    let titleRaw = await gemini.generateText(titlePrompt, titleGenConfig);
+    let titleResult;
+    try {
+      titleResult = gemini.parseJsonFromText(titleRaw);
+    } catch (parseErr) {
+      if (titleRaw && titleRaw.length < 100) {
+        console.warn('[generate-story] Title response truncated, retrying once. Length:', titleRaw.length);
+        titleRaw = await gemini.generateText(titlePrompt, titleGenConfig);
+        titleResult = gemini.parseJsonFromText(titleRaw);
+      } else {
+        throw parseErr;
+      }
+    }
+    const rawTitle = (
+      (titleResult.title && String(titleResult.title).trim()) ||
+      (titleResult.book_title && String(titleResult.book_title).trim()) ||
+      (titleResult.name && String(titleResult.name).trim()) ||
+      null
+    );
+    if (rawTitle && !looksLikeStorySentence(rawTitle)) {
+      generatedTitle = rawTitle;
+    } else if (rawTitle) {
+      console.warn('[generate-story] Title rejected (looks like story sentence):', rawTitle.slice(0, 60));
+    }
+    generatedSummary = (
+      (titleResult.summary && String(titleResult.summary).trim()) ||
+      (titleResult.description && String(titleResult.description).trim()) ||
+      null
+    );
+    console.log(`[generate-story] AI title: "${generatedTitle || '(rejected: looks like sentence)'}"`);
+  } catch (e) {
+    console.warn('[generate-story] Title generation failed:', e.message);
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[generate-story] Title error stack:', e.stack);
     }
   }
-  return results;
+
+  return {
+    title: generatedTitle || 'My Story',
+    summary: generatedSummary || fullText.slice(0, 120).replace(/\s+\S*$/, '...')
+  };
 }
 
 function getFallbackStory(description, language) {
@@ -167,87 +255,11 @@ router.post('/', async (req, res) => {
 
       fullText = pages.join('\n\n');
 
-      const pageResults = await generatePageImages(pages, parsedJson || {});
-
-      let generatedTitle = null;
-      let generatedSummary = null;
-      const firstPageFirstWords = pages.length > 0
-        ? pages[0].split(/\s+/).slice(0, 8).join(' ').replace(/[.!?,;:]+$/, '').trim().toLowerCase()
-        : '';
-
-      function looksLikeStorySentence(title) {
-        if (!title || typeof title !== 'string') return true;
-        const t = title.trim();
-        if (t.split(/\s+/).length > 8) return true;
-        if (t.length > 60) return true;
-        if (firstPageFirstWords && t.toLowerCase().slice(0, 40) === firstPageFirstWords.slice(0, 40)) return true;
-        return false;
-      }
-
-      try {
-        const titlePrompt = `You are a children's book editor. Given this children's story, create:
-1. A short, catchy BOOK TITLE (max 8 words) — creative and fun, NOT a repeat of the first sentence or the story description. Examples: "The Brave Little Dragon", "Where the Crayons Dance".
-2. A one-sentence summary (max 120 characters) that captures the heart of the story for the back cover.
-
-Story:
-${fullText.slice(0, 1500)}
-
-Respond with ONLY valid JSON, no markdown or extra text:
-{"title": "...", "summary": "..."}`;
-        const titleGenConfig = {
-          model: gemini.EXPANSION_MODEL,
-          temperature: 0.9,
-          maxOutputTokens: 4096,
-          config: {
-            safetySettings: [
-              { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
-              { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-              { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-              { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
-            ]
-          }
-        };
-        let titleRaw = await gemini.generateText(titlePrompt, titleGenConfig);
-        let titleResult;
-        try {
-          titleResult = gemini.parseJsonFromText(titleRaw);
-        } catch (parseErr) {
-          if (titleRaw && titleRaw.length < 100) {
-            console.warn('[generate-story] Title response truncated, retrying once. Length:', titleRaw.length);
-            titleRaw = await gemini.generateText(titlePrompt, titleGenConfig);
-            titleResult = gemini.parseJsonFromText(titleRaw);
-          } else {
-            throw parseErr;
-          }
-        }
-        const rawTitle = (
-          (titleResult.title && String(titleResult.title).trim()) ||
-          (titleResult.book_title && String(titleResult.book_title).trim()) ||
-          (titleResult.name && String(titleResult.name).trim()) ||
-          null
-        );
-        if (rawTitle && !looksLikeStorySentence(rawTitle)) {
-          generatedTitle = rawTitle;
-        } else if (rawTitle) {
-          console.warn('[generate-story] Title rejected (looks like story sentence):', rawTitle.slice(0, 60));
-        }
-        generatedSummary = (
-          (titleResult.summary && String(titleResult.summary).trim()) ||
-          (titleResult.description && String(titleResult.description).trim()) ||
-          null
-        );
-        console.log(`[generate-story] AI title: "${generatedTitle || '(rejected: looks like sentence)'}"`);
-      } catch (e) {
-        console.warn('[generate-story] Title generation failed:', e.message);
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('[generate-story] Title error stack:', e.stack);
-        }
-      }
-
-      if (!generatedTitle) generatedTitle = 'My Story';
-      if (!generatedSummary) {
-        generatedSummary = fullText.slice(0, 120).replace(/\s+\S*$/, '...');
-      }
+      // Run image generation and title generation in parallel
+      const [pageResults, { title: generatedTitle, summary: generatedSummary }] = await Promise.all([
+        generatePageImages(pages, parsedJson || {}),
+        generateTitleAndSummary(fullText, pages)
+      ]);
 
       res.json({
         success: true,
