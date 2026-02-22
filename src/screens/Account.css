@@ -21,7 +21,7 @@
 .account-back-btn {
   background: none;
   border: none;
-  color: #667eea;
+  color: #000051;
   font-family: 'Patrick Hand', 'Comic Sans MS', cursive, sans-serif;
   font-size: 1.5rem;
   font-weight: 600;
@@ -82,7 +82,7 @@
 .stat-number {
   font-size: 2rem;
   font-weight: bold;
-  color: #667eea;
+  color: #000051;
 }
 
 .stat-label {
@@ -93,7 +93,7 @@
 
 .account-info-note {
   background: #f0f4ff;
-  border-left: 4px solid #667eea;
+  border-left: 4px solid #000051;
   padding: 12px 16px;
   border-radius: 0 10px 10px 0;
   font-size: 1.3rem;
