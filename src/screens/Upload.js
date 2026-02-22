@@ -80,7 +80,7 @@ const Upload = () => {
         className="upload-container"
         style={{
           backgroundImage: `url(${cloudDrawBg})`,
-          backgroundSize: '96%',
+          backgroundSize: '100% 100%',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat'
         }}
