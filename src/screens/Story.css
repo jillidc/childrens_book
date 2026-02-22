@@ -26,7 +26,7 @@
   width: 100%;
   max-width: 1000px;
   position: relative;
-  z-index: 2;
+  z-index: 3;
 }
 
 .back-btn,
@@ -45,7 +45,7 @@
 .back-btn:hover,
 .done-btn:hover {
   background: white;
-  color: #667eea;
+  color: #000051;
 }
 
 .story-header h1 {
