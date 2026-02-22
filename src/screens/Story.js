@@ -271,6 +271,7 @@ const Story = () => {
       </div>
 
       <div className="book-wrapper">
+        <div className="book-inner">
         <img src={openBook} alt="Book frame" className="book-frame" />
 
         <div className="book-pages">
@@ -323,6 +324,7 @@ const Story = () => {
         {currentSpread < totalSpreads - 1 && (
           <button className="page-nav next-page" onClick={goToNextSpread}>&#8250;</button>
         )}
+        </div>
       </div>
 
       <div className="story-controls" style={{ backgroundImage: `url(${blueScribble})` }}>
