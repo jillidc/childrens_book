@@ -1,7 +1,6 @@
 .upload-screen {
   min-height: 100vh;
   padding: 20px;
-  background-color: #93c5fd;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -54,10 +53,8 @@
   margin: 0 auto;
   flex: 1;
   width: 100%;
-  background: white;
   border-radius: 20px;
-  padding: 56px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  padding: 100px;
 }
 
 .library-footer {

@@ -5,6 +5,7 @@ import './Upload.css';
 import bgImage from '../assets/Jillian-BG.png';
 import libraryIcon from '../assets/bluescribble.png';
 import drawingImg from '../assets/drawing.PNG';
+import cloudDrawBg from '../assets/blue-cloud-bg.png';
 
 const Upload = () => {
   const [image, setImage] = useState(null);
@@ -75,7 +76,15 @@ const Upload = () => {
         <h1>Draw My Story</h1>
       </div>
 
-      <div className="upload-container">
+      <div
+        className="upload-container"
+        style={{
+          backgroundImage: `url(${cloudDrawBg})`,
+          backgroundSize: '96%',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      >
         <div className="image-upload">
           <div className="upload-box">
             {imagePreview ? (
