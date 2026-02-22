@@ -43,7 +43,7 @@ function HighlightedText({ text, charStart, charEnd }) {
   return (
     <>
       {text.slice(0, charStart)}
-      <mark className="word-highlight">{text.slice(charStart, charEnd)}</mark>
+      <span className="word-highlight">{text.slice(charStart, charEnd)}</span>
       {text.slice(charEnd)}
     </>
   );

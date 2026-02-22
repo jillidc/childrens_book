@@ -82,27 +82,97 @@ const generateAudioWithElevenLabs = async (text, options = {}) => {
   }
 };
 
-// Convert character-level ElevenLabs alignment to word-level timing
-const buildWordTimings = (originalText, alignment) => {
+/**
+ * Inject ElevenLabs v3 audio tags at sentence boundaries for expressive narration.
+ * Returns { annotated, offsets } where offsets maps clean→annotated positions.
+ */
+function addExpressiveMarkers(cleanText) {
+  const markers = [];
+  const sentenceRegex = /[^.!?]*[.!?]+/g;
+  let m;
+  let pos = 0;
+
+  while ((m = sentenceRegex.exec(cleanText)) !== null) {
+    const sentence = m[0];
+    const lower = sentence.toLowerCase();
+    let tag;
+
+    if (/!/.test(sentence)) {
+      if (/\b(hooray|yay|wow|amazing|wonderful|incredible|fantastic)\b/.test(lower)) {
+        tag = '[laughs happily] ';
+      } else {
+        tag = '[excited] ';
+      }
+    } else if (/\?/.test(sentence)) {
+      tag = '[curiously] ';
+    } else if (/\b(whisper|quiet|soft|hush|tiptoe|sneak)\b/.test(lower)) {
+      tag = '[softly] ';
+    } else if (/\b(scar|dark|afraid|tremble|shiver|nervou)\b/.test(lower)) {
+      tag = '[nervously] ';
+    } else if (/\b(sad|cry|tear|miss|lone)\b/.test(lower)) {
+      tag = '[gently] ';
+    } else if (pos === 0) {
+      tag = '[warmly] ';
+    } else {
+      tag = '';
+    }
+
+    if (tag) {
+      markers.push({ cleanPos: m.index, marker: tag });
+    }
+    pos++;
+  }
+
+  let annotated = '';
+  let lastCleanPos = 0;
+  let cumOffset = 0;
+  const offsets = [];
+
+  for (const mk of markers) {
+    annotated += cleanText.slice(lastCleanPos, mk.cleanPos) + mk.marker;
+    cumOffset += mk.marker.length;
+    offsets.push({ cleanPos: mk.cleanPos, offset: cumOffset });
+    lastCleanPos = mk.cleanPos;
+  }
+  annotated += cleanText.slice(lastCleanPos);
+
+  return { annotated, offsets };
+}
+
+function cleanToAnnotatedPos(cleanPos, offsets) {
+  let offset = 0;
+  for (const o of offsets) {
+    if (o.cleanPos <= cleanPos) offset = o.offset;
+    else break;
+  }
+  return cleanPos + offset;
+}
+
+/**
+ * Convert character-level ElevenLabs alignment to word-level timing.
+ * Word positions are in cleanText coordinates (for display highlighting).
+ * Alignment is in annotatedText coordinates (what ElevenLabs received).
+ */
+const buildWordTimings = (cleanText, alignment, offsets = []) => {
   const { characters, character_start_times_seconds, character_end_times_seconds } = alignment;
   if (!characters?.length) return [];
+  const aLen = character_start_times_seconds.length;
 
   const wordTimings = [];
   const wordRegex = /\S+/g;
   let match;
 
-  while ((match = wordRegex.exec(originalText)) !== null) {
-    const charStart = match.index;
-    const charEnd   = charStart + match[0].length;
+  while ((match = wordRegex.exec(cleanText)) !== null) {
+    const cleanStart = match.index;
+    const cleanEnd   = cleanStart + match[0].length;
 
-    // Alignment positions track ~1-to-1 with original text characters
-    const aStart = Math.min(charStart, character_start_times_seconds.length - 1);
-    const aEnd   = Math.min(charEnd - 1, character_end_times_seconds.length - 1);
+    const aStart = Math.min(cleanToAnnotatedPos(cleanStart, offsets), aLen - 1);
+    const aEnd   = Math.min(cleanToAnnotatedPos(cleanEnd - 1, offsets), aLen - 1);
 
     wordTimings.push({
       word: match[0],
-      charStart,
-      charEnd,
+      charStart: cleanStart,
+      charEnd: cleanEnd,
       startTime: character_start_times_seconds[aStart] ?? 0,
       endTime:   character_end_times_seconds[aEnd]   ?? 0
     });
@@ -129,11 +199,14 @@ const generateAudioWithTimestamps = async (text, options = {}) => {
     speed = 1.0
   } = options;
 
+  const { annotated, offsets } = addExpressiveMarkers(text);
+  console.log(`[TTS] Annotated text: "${annotated.slice(0, 120)}…"`);
+
   try {
     const response = await axios.post(
       `${ELEVENLABS_API_URL}/text-to-speech/${voiceId}/with-timestamps`,
       {
-        text,
+        text: annotated,
         model_id: modelId,
         voice_settings: {
           stability,
@@ -158,7 +231,7 @@ const generateAudioWithTimestamps = async (text, options = {}) => {
       throw new Error('ElevenLabs returned incomplete timestamp response');
     }
 
-    const wordTimings = buildWordTimings(text, alignment);
+    const wordTimings = buildWordTimings(text, alignment, offsets);
 
     return {
       audioBase64: audio_base64,
