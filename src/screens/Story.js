@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { generateWithTimestamps, clampSpeed } from '../services/elevenLabsService';
 import openBook from '../assets/open-book.png';
 import './Story.css';
-import nightSky from '../assets/night-sky.png';
+import nightSky from '../assets/night-sky.gif';
 import cloudsPng from '../assets/clouds.png';
 import blueScribble from '../assets/bluescribble.png';
 

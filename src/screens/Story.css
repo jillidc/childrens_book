@@ -31,6 +31,7 @@
 
 .back-btn,
 .done-btn {
+  font-family: 'Patrick Hand', 'Comic Sans MS', cursive, sans-serif;
   background: rgba(255, 255, 255, 0.2);
   color: white;
   border: 2px solid white;
@@ -369,6 +370,7 @@
 }
 
 .speed-option {
+  font-family: 'Patrick Hand', 'Comic Sans MS', cursive, sans-serif;
   flex: 1;
   padding: 5px 14px;
   font-size: 1.2rem;
