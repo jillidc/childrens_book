@@ -1,70 +1,77 @@
-// Gemini API service for story generation
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+import apiService from './apiService';
 
-export const generateStory = async (description, language = 'english') => {
-  const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
-
-  if (!apiKey) {
-    throw new Error('Gemini API key not found. Please add REACT_APP_GEMINI_API_KEY to your .env file');
-  }
-
-  const prompt = `Create a magical, child-friendly story based on this drawing description: "${description}".
-
-Requirements:
-- Write the story in ${language}
-- Make it approximately 200-300 words
-- Include adventure, friendship, or wonder
-- Use simple, engaging language suitable for children
-- Make the story positive and uplifting
-- Structure it with clear paragraphs
-- Include the elements from the drawing description as main characters or important story elements
-
-Please write only the story text, no additional formatting or explanations.`;
-
+/**
+ * Generate story via backend. Optional imageUrl (or data URL) for drawing-based story + illustrations.
+ * Returns full response data: { pages, fullText, story, translatedStory, language, ... }.
+ */
+export const generateStory = async (
+  description,
+  language = 'english',
+  translationLanguage = null,
+  imageUrl = null
+) => {
   try {
-    const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: prompt
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.8,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 1024,
-        },
-      }),
-    });
+    const requestData = {
+      description,
+      language,
+      ...(translationLanguage && { translationLanguage }),
+    };
 
-    if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.status}`);
+    if (imageUrl) {
+      const dataMatch = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+      if (dataMatch) {
+        requestData.imageBase64 = { mimeType: dataMatch[1], data: dataMatch[2] };
+      } else {
+        requestData.imageUrl = imageUrl;
+      }
     }
 
-    const data = await response.json();
+    const response = await apiService.post('/generate-story', requestData);
 
-    if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
-      return data.candidates[0].content.parts[0].text.trim();
-    } else {
-      throw new Error('Invalid response format from Gemini API');
+    if (response.success && response.data) {
+      return response.data;
     }
+    throw new Error(response.error || 'Failed to generate story');
   } catch (error) {
     console.error('Error generating story:', error);
-
-    // Fallback story for development/testing
-    return `Once upon a time, there was a magical drawing that came to life! ${description} became the hero of an incredible adventure.
-
-Through enchanted forests and over sparkling mountains, our brave character discovered that every line and color in the drawing held special powers. Along the way, they met friendly creatures who became the best of friends.
-
-Together, they learned that imagination is the most powerful magic of all. Every stroke of creativity can build bridges between dreams and reality, creating stories that last forever.
-
-And so, our drawing's adventure reminds us that art and imagination can take us anywhere we want to go, as long as we believe in the magic within ourselves.
-
-The End.`;
+    return getFallbackData(description, language);
   }
 };
+
+/** Book conversion: simplify text, extract scenes, generate illustrations. */
+export const convertBook = async (rawText) => {
+  try {
+    const response = await apiService.post('/book-conversion', { rawText });
+    if (response.success && response.data) return response.data;
+    throw new Error(response.error || 'Book conversion failed');
+  } catch (error) {
+    console.error('Error converting book:', error);
+    throw error;
+  }
+};
+
+function getFallbackData(description, language) {
+  const fullText = getFallbackStory(description, language);
+  return {
+    pages: [{ text: fullText, imageUrl: null }],
+    fullText,
+    story: fullText,
+    translatedStory: null,
+    translatedPages: null,
+    language,
+    translationLanguage: null,
+    description,
+    generatedAt: new Date().toISOString(),
+    fallback: true
+  };
+}
+
+function getFallbackStory(description, language) {
+  const stories = {
+    english: `Once upon a time, there was a magical drawing that came to life! Your wonderful creation - ${description} - became the hero of an incredible adventure. Through enchanted forests and over sparkling mountains, our brave character discovered that every line and color in the drawing held special powers. Together, they learned that imagination is the most powerful magic of all. The End.`,
+    spanish: `Había una vez un dibujo mágico que cobró vida! Tu maravillosa creación - ${description} - se convirtió en el héroe de una aventura increíble. A través de bosques encantados, nuestro valiente personaje descubrió poderes especiales. Fin.`,
+    french: `Il était une fois un dessin magique qui a pris vie! Votre merveilleuse création - ${description} - est devenue le héros d'une aventure incroyable. À travers des forêts enchantées, notre brave personnage a découvert des pouvoirs spéciaux. Fin.`,
+    chinese: `从前，有一个神奇的画作活了过来！你的精彩创作——${description}——成为了一场不可思议冒险的英雄。穿过魔法森林，我们勇敢的角色发现了画中的特殊力量。完。`
+  };
+  return stories[language] || stories.english;
+}

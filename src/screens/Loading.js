@@ -1,21 +1,29 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { generateStory } from '../services/geminiService';
+import storyService from '../services/storyService';
 import './Loading.css';
+import nightSky from '../assets/night-sky.png';
+import cloudsPng from '../assets/clouds.png';
+
+const loadingMessages = [
+  "Creating your magical story...",
+  "Adding characters and adventures...",
+  "Sprinkling some magic dust...",
+  "Almost ready to read!"
+];
 
 const Loading = () => {
-  const [loadingText, setLoadingText] = useState("Creating your magical story...");
+  const [loadingText, setLoadingText] = useState(loadingMessages[0]);
   const [progress, setProgress] = useState(0);
   const navigate = useNavigate();
-
-  const loadingMessages = [
-    "Creating your magical story...",
-    "Adding characters and adventures...",
-    "Sprinkling some magic dust...",
-    "Almost ready to read!"
-  ];
+  const location = useLocation();
+  const hasStarted = useRef(false);
 
   useEffect(() => {
+    if (hasStarted.current) return;
+    hasStarted.current = true;
+
     const generateUserStory = async () => {
       try {
         const storyData = JSON.parse(localStorage.getItem('currentStory'));
@@ -33,23 +41,86 @@ const Loading = () => {
           }
         }, 1500);
 
-        const generatedStory = await generateStory(storyData.description, storyData.language);
+        const imageForApi = location.state?.imageDataUrl || storyData.imageUrl || storyData.imagePreview || null;
+        const data = await generateStory(
+          storyData.description,
+          storyData.language,
+          storyData.translationLanguage,
+          imageForApi
+        );
 
         clearInterval(messageInterval);
         setProgress(100);
         setLoadingText("Story ready!");
 
+        const fullText = data.fullText || data.story || '';
+        const pages = data.pages || [{ text: fullText, imageUrl: null }];
+
+        const autoTitle = storyData.description
+          ? storyData.description.charAt(0).toUpperCase() +
+            storyData.description.slice(1, 60).trim() +
+            (storyData.description.length > 60 ? '...' : '')
+          : 'My Story';
+
         const completeStory = {
           ...storyData,
-          story: generatedStory,
-          createdAt: new Date().toISOString()
+          pages,
+          fullText,
+          storyText: fullText,
+          story: fullText,
+          title: data.title || storyData.title || autoTitle,
+          description: data.summary || storyData.description,
+          createdAt: storyData.createdAt || new Date().toISOString()
         };
 
-        localStorage.setItem('currentStory', JSON.stringify(completeStory));
+        // Save to backend -- serialize pages (with image URLs) as versioned JSON
+        try {
+          const pagesPayload = pages.map(p => ({
+            text: p.text,
+            imageUrl: (p.imageUrl && !p.imageUrl.startsWith('data:')) ? p.imageUrl : null
+          }));
 
-        const existingStories = JSON.parse(localStorage.getItem('userStories') || '[]');
-        existingStories.unshift(completeStory);
-        localStorage.setItem('userStories', JSON.stringify(existingStories));
+          const backendPayload = {
+            title: completeStory.title,
+            description: completeStory.description,
+            storyText: JSON.stringify({ version: 2, pages: pagesPayload }),
+            language: completeStory.language,
+            translationLanguage: completeStory.translationLanguage || null,
+            imageFileName: completeStory.imageFileName || null,
+          };
+          if (completeStory.imageUrl && !completeStory.imageUrl.startsWith('blob:') && !completeStory.imageUrl.startsWith('data:')) {
+            backendPayload.imageUrl = completeStory.imageUrl;
+          }
+          await storyService.createStory(backendPayload);
+        } catch (error) {
+          console.error('Error saving story to backend:', error);
+        }
+
+        // For localStorage: keep pages but strip any huge data-URL images
+        // to avoid exceeding the ~5 MB quota
+        const pagesForStorage = pages.map(p => ({
+          text: p.text,
+          imageUrl: p.imageUrl && !p.imageUrl.startsWith('data:') ? p.imageUrl : null
+        }));
+        const storyForStorage = {
+          ...completeStory,
+          pages: pagesForStorage,
+          imagePreview: storyData.imagePreview
+        };
+        try {
+          localStorage.setItem('currentStory', JSON.stringify(storyForStorage));
+        } catch (e) {
+          console.warn('localStorage full, storing minimal data');
+          localStorage.setItem('currentStory', JSON.stringify({
+            description: storyData.description,
+            language: storyData.language,
+            fullText,
+            story: fullText,
+            pages: pages.map(p => ({ text: p.text, imageUrl: null })),
+            title: completeStory.title,
+            createdAt: completeStory.createdAt
+          }));
+        }
 
         setTimeout(() => navigate('/story'), 1000);
       } catch (error) {
@@ -60,10 +131,12 @@ const Loading = () => {
     };
 
     generateUserStory();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- loadingMessages is a module-level constant
   }, [navigate]);
 
   return (
-    <div className="loading-screen">
+    <div className="loading-screen" style={{ backgroundImage: `url(${nightSky})` }}>
+      <div className="scrolling-clouds" style={{ backgroundImage: `url(${cloudsPng})` }} />
       <div className="loading-container">
         <div className="loading-animation">
           <div className="magic-wand">🪄</div>

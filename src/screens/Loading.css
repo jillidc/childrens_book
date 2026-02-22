@@ -3,14 +3,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: #0b1a3b;
   color: white;
+  position: relative;
+  overflow: hidden;
 }
 
 .loading-container {
   text-align: center;
   max-width: 500px;
   padding: 40px;
+  position: relative;
+  z-index: 2;
 }
 
 .loading-animation {
@@ -99,4 +106,25 @@
   0% { box-shadow: 0 0 5px rgba(255,255,255,0.5); }
   50% { box-shadow: 0 0 20px rgba(255,255,255,0.8); }
   100% { box-shadow: 0 0 5px rgba(255,255,255,0.5); }
+}
+
+/* Scrolling clouds overlay */
+.loading-screen .scrolling-clouds {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 200%;
+  height: 100%;
+  background-repeat: repeat-x;
+  background-size: 100% auto;
+  background-position: 0 center;
+  animation: scroll-clouds 80s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.6;
+}
+
+@keyframes scroll-clouds {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }

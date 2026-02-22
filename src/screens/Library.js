@@ -1,26 +1,66 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import storyService from '../services/storyService';
 import './Library.css';
+import bgImage from '../assets/Jillian-BG.png';
+import bookPjImage from '../assets/book-PJ.PNG';
+import createImg from '../assets/create.png';
+import cloudDrawBg from '../assets/blue-cloud-bg.png';
+import blue1Img from '../assets/blue-1.PNG';
+import trashImg from '../assets/trash.PNG';
+
+function getCoverImage(story) {
+  if (story.imagePreview || story.imageUrl) return story.imagePreview || story.imageUrl;
+  try {
+    const parsed = JSON.parse(story.storyText);
+    if (parsed?.version === 2 && parsed.pages?.[0]?.imageUrl) {
+      return parsed.pages[0].imageUrl;
+    }
+  } catch (_) {}
+  return null;
+}
 
 const Library = () => {
   const [stories, setStories] = useState([]);
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const userStories = JSON.parse(localStorage.getItem('userStories') || '[]');
-    setStories(userStories);
-  }, []);
+    loadStories();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  const loadStories = async () => {
+    try {
+      const result = await storyService.getAllStories(user?.id || null);
+      setStories(result.stories);
+    } catch (error) {
+      console.error('Error loading stories:', error);
+      const userStories = JSON.parse(localStorage.getItem('userStories') || '[]');
+      setStories(userStories);
+    }
+  };
 
   const readStory = (story) => {
     localStorage.setItem('currentStory', JSON.stringify(story));
     navigate('/story');
   };
 
-  const deleteStory = (index) => {
+  const deleteStory = async (index) => {
+    const story = stories[index];
     if (window.confirm('Are you sure you want to delete this story?')) {
-      const updatedStories = stories.filter((_, i) => i !== index);
-      setStories(updatedStories);
-      localStorage.setItem('userStories', JSON.stringify(updatedStories));
+      try {
+        await storyService.deleteStory(story.id);
+        // Reload stories after successful deletion
+        await loadStories();
+      } catch (error) {
+        console.error('Error deleting story:', error);
+        // Fallback to local deletion
+        const updatedStories = stories.filter((_, i) => i !== index);
+        setStories(updatedStories);
+        localStorage.setItem('userStories', JSON.stringify(updatedStories));
+      }
     }
   };
 
@@ -37,7 +77,7 @@ const Library = () => {
   };
 
   return (
-    <div className="library-screen">
+    <div className="library-screen" style={{ backgroundImage: `url(${bgImage})` }}>
       <div className="library-header">
         <button className="back-btn" onClick={goHome}>
           ← Back
@@ -50,29 +90,55 @@ const Library = () => {
 
       <div className="library-container">
         {stories.length === 0 ? (
-          <div className="empty-library">
-            <div className="empty-icon">📚</div>
+          <div
+            className="empty-library"
+            style={{
+              backgroundImage: `url(${cloudDrawBg})`,
+              backgroundSize: '96%',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }}
+          >
+            <div className="empty-icon">
+              <img src={bookPjImage} alt="Books" className="empty-library-book-img" />
+            </div>
             <h2>No stories yet!</h2>
-            <p>Create your first story to see it here.</p>
+            <p>Create your first story to see it here</p>
             <button className="create-first-btn" onClick={goHome}>
-              Create My First Story
+              <img src={createImg} alt="" className="create-first-btn-img" />
+              <span className="create-first-btn-text">Create My First Story</span>
             </button>
           </div>
         ) : (
           <div className="stories-grid">
             {stories.map((story, index) => (
-              <div key={index} className="story-card">
+              <div
+                key={index}
+                className="story-card"
+                style={{
+                  backgroundImage: `url(${cloudDrawBg})`,
+                  backgroundSize: '100% 100%',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat'
+                }}
+              >
                 <div className="story-image">
-                  <img
-                    src={story.imagePreview}
-                    alt={`Story ${index + 1}`}
-                    className="story-thumbnail"
-                  />
+                  {getCoverImage(story) ? (
+                    <img
+                      src={getCoverImage(story)}
+                      alt={`Story ${index + 1}`}
+                      className="story-thumbnail"
+                    />
+                  ) : (
+                    <div className="story-thumbnail-placeholder">
+                      <img src={bookPjImage} alt="Story" className="story-thumbnail-placeholder-img" />
+                    </div>
+                  )}
                 </div>
 
                 <div className="story-details">
                   <h3 className="story-title">
-                    Story #{stories.length - index}
+                    {story.title || `Story #${stories.length - index}`}
                   </h3>
 
                   <p className="story-description">
@@ -96,14 +162,15 @@ const Library = () => {
                       className="read-btn"
                       onClick={() => readStory(story)}
                     >
-                      📖 Read Story
+                      <img src={blue1Img} alt="" className="read-btn-img" />
+                      <span className="read-btn-text">Read Story</span>
                     </button>
 
                     <button
                       className="delete-btn"
                       onClick={() => deleteStory(index)}
                     >
-                      🗑️
+                      <img src={trashImg} alt="Delete" className="delete-btn-img" />
                     </button>
                   </div>
                 </div>

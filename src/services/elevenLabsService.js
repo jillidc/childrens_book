@@ -1,76 +1,104 @@
-// ElevenLabs API service for text-to-speech
-const ELEVENLABS_API_URL = 'https://api.elevenlabs.io/v1';
-const DEFAULT_VOICE_ID = 'pNInz6obpgDQGcFmaJgB'; // Adam voice, good for children's stories
+import apiService from './apiService';
 
-export const playAudio = async (text, voiceId = DEFAULT_VOICE_ID) => {
-  const apiKey = process.env.REACT_APP_ELEVENLABS_API_KEY;
+// Rachel — warm, calm, soothing female voice, perfect for children's storytelling
+const DEFAULT_VOICE_ID = '21m00Tcm4TlvDq8ikWAM';
+// eleven_flash_v2_5 — ultra-low latency model for fast playback start
+const DEFAULT_MODEL_ID = 'eleven_flash_v2_5';
 
-  if (!apiKey) {
-    throw new Error('ElevenLabs API key not found. Please add REACT_APP_ELEVENLABS_API_KEY to your .env file');
-  }
-
+/**
+ * Generate ElevenLabs audio with character-level timing for word highlighting.
+ *
+ * Returns:
+ *   { audioUrl: string, wordTimings: Array<{word, charStart, charEnd, startTime, endTime}> }
+ * or null on failure (caller should fall back to SpeechSynthesis).
+ */
+export const generateWithTimestamps = async (text, options = {}) => {
   try {
-    const response = await fetch(`${ELEVENLABS_API_URL}/text-to-speech/${voiceId}`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'audio/mpeg',
-        'Content-Type': 'application/json',
-        'xi-api-key': apiKey,
-      },
-      body: JSON.stringify({
-        text: text,
-        model_id: 'eleven_monolingual_v1',
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.8,
-          style: 0.2,
-          use_speaker_boost: true
-        }
-      }),
-    });
+    const requestData = {
+      text,
+      voiceId:         options.voiceId         || DEFAULT_VOICE_ID,
+      modelId:         options.modelId         || DEFAULT_MODEL_ID,
+      stability:       options.stability        ?? 0.65,
+      similarityBoost: options.similarityBoost  ?? 0.75,
+      style:           options.style            ?? 0.3,
+      useSpeakerBoost: options.useSpeakerBoost  ?? true,
+      speed:           clampSpeed(options.speed ?? 1.0)
+    };
 
-    if (!response.ok) {
-      throw new Error(`ElevenLabs API error: ${response.status}`);
+    const response = await apiService.post('/text-to-speech/with-timestamps', requestData);
+
+    if (!response.success || !response.audioBase64) {
+      console.warn('ElevenLabs with-timestamps: unexpected response', response);
+      return null;
     }
 
-    const audioBlob = await response.blob();
-    const audioUrl = URL.createObjectURL(audioBlob);
-    return audioUrl;
-  } catch (error) {
-    console.error('Error generating audio:', error);
+    // Decode base64 audio → Blob → object URL
+    const byteChars  = atob(response.audioBase64);
+    const byteArray  = new Uint8Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) {
+      byteArray[i] = byteChars.charCodeAt(i);
+    }
+    const blob     = new Blob([byteArray], { type: response.mimeType || 'audio/mpeg' });
+    const audioUrl = URL.createObjectURL(blob);
 
-    // For development, you could return a mock audio URL or use browser's speech synthesis
+    return {
+      audioUrl,
+      wordTimings: response.wordTimings || []
+    };
+
+  } catch (err) {
+    console.error('ElevenLabs generateWithTimestamps failed:', err);
     return null;
   }
 };
 
-// Fallback function using browser's built-in speech synthesis (for development/testing)
-export const fallbackTextToSpeech = (text) => {
-  return new Promise((resolve, reject) => {
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.8;
-      utterance.pitch = 1.1;
-      utterance.volume = 1;
+/** ElevenLabs speed range is 0.7–1.2 */
+export const clampSpeed = (speed) => Math.min(1.2, Math.max(0.7, speed));
 
-      // Try to find a child-friendly voice
-      const voices = speechSynthesis.getVoices();
-      const childVoice = voices.find(voice =>
-        voice.name.toLowerCase().includes('samantha') ||
-        voice.name.toLowerCase().includes('karen') ||
-        voice.gender === 'female'
-      );
+// ─── Legacy helpers kept for compatibility ────────────────────────────────────
 
-      if (childVoice) {
-        utterance.voice = childVoice;
-      }
+export const playAudio = async (text, voiceId = DEFAULT_VOICE_ID) => {
+  try {
+    const audioBlob = await apiService.postBlob('/text-to-speech/generate', {
+      text,
+      voiceId,
+      stability: 0.65,
+      similarityBoost: 0.75,
+      style: 0.3,
+      useSpeakerBoost: true
+    });
+    return URL.createObjectURL(audioBlob);
+  } catch (err) {
+    console.error('playAudio failed, falling back to SpeechSynthesis:', err);
+    return null;
+  }
+};
 
-      utterance.onend = () => resolve();
-      utterance.onerror = (error) => reject(error);
-
-      speechSynthesis.speak(utterance);
-    } else {
-      reject(new Error('Speech synthesis not supported'));
+export const getAvailableVoices = async () => {
+  try {
+    const response = await apiService.get('/text-to-speech/voices');
+    if (response.success) {
+      return {
+        recommended: response.data.recommended,
+        all:         response.data.all,
+        defaultVoice: response.data.defaultVoice
+      };
     }
-  });
+    throw new Error(response.error || 'Failed to fetch voices');
+  } catch (err) {
+    console.error('getAvailableVoices failed:', err);
+    return { recommended: [], all: [], defaultVoice: DEFAULT_VOICE_ID };
+  }
+};
+
+export const streamAudio = async (text, voiceId = DEFAULT_VOICE_ID) => {
+  try {
+    const audioBlob = await apiService.postBlob('/text-to-speech/stream', {
+      text, voiceId, stability: 0.65, similarityBoost: 0.75, style: 0.3, useSpeakerBoost: true
+    });
+    return URL.createObjectURL(audioBlob);
+  } catch (err) {
+    console.error('streamAudio failed:', err);
+    return playAudio(text, voiceId);
+  }
 };
