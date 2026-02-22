@@ -1,126 +1,183 @@
+/* ─────────────────────────────────────────────────────────
+   Story screen – single-column book layout
+───────────────────────────────────────────────────────── */
+
 .story-screen {
   min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
+  padding: 20px 16px 40px;
 }
 
+/* ── Header ── */
 .story-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  max-width: 1200px;
-  margin-left: auto;
-  margin-right: auto;
+  margin: 0 auto 24px;
+  max-width: 780px;
 }
 
-.back-btn, .done-btn {
-  background: rgba(255,255,255,0.2);
+.story-header h1 {
+  color: white;
+  font-size: 2.2rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.back-btn,
+.done-btn {
+  background: rgba(255, 255, 255, 0.2);
   color: white;
   border: 2px solid white;
   padding: 10px 20px;
   border-radius: 25px;
   cursor: pointer;
   font-weight: bold;
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
 }
 
-.back-btn:hover, .done-btn:hover {
+.back-btn:hover,
+.done-btn:hover {
   background: white;
   color: #667eea;
 }
 
-.story-header h1 {
-  color: white;
-  font-size: 2.5rem;
-  text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-}
-
+/* ── Page card – single column ── */
 .story-container {
-  max-width: 1200px;
+  max-width: 780px;
   margin: 0 auto;
   background: white;
-  border-radius: 20px;
+  border-radius: 24px;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  min-height: 70vh;
-}
-
-.story-image {
-  padding: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f8f9ff;
-}
-
-.drawing-image {
-  max-width: 100%;
-  max-height: 400px;
-  border-radius: 15px;
-  object-fit: cover;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-}
-
-.story-content {
-  padding: 30px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
 }
 
-.story-text {
-  flex: 1;
-  margin-bottom: 30px;
+/* ── Text block ── */
+.story-text-block {
+  padding: 36px 40px 24px;
 }
 
 .story-paragraphs {
-  font-size: 1.2rem;
-  line-height: 1.8;
-  color: #333;
+  font-size: 1.35rem;
+  line-height: 1.9;
+  color: #2d2d2d;
 }
 
 .story-paragraph {
-  margin-bottom: 20px;
+  margin: 0;
   text-align: left;
 }
 
-.story-paragraph:first-child {
-  font-size: 1.3rem;
-  font-weight: bold;
-  color: #667eea;
+/* ── Yellow word highlight ── */
+.highlighted-word {
+  background-color: #fff176;
+  border-radius: 4px;
+  padding: 1px 3px;
+  transition: background-color 0.12s ease;
 }
 
-.no-story {
+/* ── Illustration below text ── */
+.story-image-block {
+  padding: 0 40px 32px;
+  display: flex;
+  justify-content: center;
+}
+
+.page-illustration {
+  width: 100%;
+  max-height: 420px;
+  border-radius: 16px;
+  object-fit: cover;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+
+.story-image-placeholder {
+  width: 100%;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f0f4ff;
+  border-radius: 16px;
+  gap: 10px;
+}
+
+.placeholder-text {
+  font-size: 3.5rem;
+  opacity: 0.45;
+}
+
+.placeholder-label {
+  font-size: 0.95rem;
   color: #999;
-  font-style: italic;
-  text-align: center;
-  padding: 40px;
 }
 
+/* ── Pagination ── */
+.story-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 8px 40px 20px;
+  flex-wrap: wrap;
+}
+
+.page-nav-btn {
+  background: rgba(102, 126, 234, 0.12);
+  color: #667eea;
+  border: 2px solid #667eea;
+  padding: 9px 20px;
+  border-radius: 22px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+}
+
+.page-nav-btn:hover:not(:disabled) {
+  background: #667eea;
+  color: white;
+}
+
+.page-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.page-indicator {
+  font-size: 0.95rem;
+  color: #888;
+  font-weight: 500;
+}
+
+/* ── Narrator controls ── */
 .story-controls {
   border-top: 2px solid #f0f0f0;
-  padding-top: 20px;
+  padding: 22px 40px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
 .play-btn {
   background: linear-gradient(135deg, #48c78e, #06d6a0);
   color: white;
   border: none;
-  padding: 15px 30px;
+  padding: 14px 32px;
   font-size: 1.1rem;
   font-weight: bold;
-  border-radius: 25px;
+  border-radius: 28px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  margin-bottom: 15px;
-  box-shadow: 0 5px 15px rgba(6, 214, 160, 0.4);
+  transition: all 0.25s ease;
+  align-self: flex-start;
+  box-shadow: 0 5px 16px rgba(6, 214, 160, 0.38);
 }
 
 .play-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(6, 214, 160, 0.6);
+  box-shadow: 0 8px 24px rgba(6, 214, 160, 0.55);
 }
 
 .play-btn:disabled {
@@ -131,36 +188,174 @@
 
 .play-btn.playing {
   background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+  box-shadow: 0 5px 16px rgba(238, 90, 36, 0.38);
 }
 
+/* ── Narrator settings row ── */
+.narrator-settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: center;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.setting-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #555;
+  min-width: 72px;
+}
+
+.setting-value {
+  font-size: 0.88rem;
+  color: #888;
+  min-width: 56px;
+}
+
+/* ── Toggle switch ── */
+.toggle-btn {
+  position: relative;
+  width: 48px;
+  height: 26px;
+  border-radius: 13px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.25s ease;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.toggle-btn.toggle-on {
+  background: #48c78e;
+}
+
+.toggle-btn.toggle-off {
+  background: #ccc;
+}
+
+.toggle-knob {
+  position: absolute;
+  top: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  transition: left 0.25s ease;
+  display: block;
+}
+
+.toggle-btn.toggle-on .toggle-knob {
+  left: 25px;
+}
+
+.toggle-btn.toggle-off .toggle-knob {
+  left: 3px;
+}
+
+/* ── Speed slider ── */
+.speed-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 120px;
+  height: 6px;
+  border-radius: 3px;
+  background: #e0e0e0;
+  outline: none;
+  cursor: pointer;
+}
+
+.speed-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #667eea;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(102, 126, 234, 0.5);
+}
+
+.speed-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #667eea;
+  cursor: pointer;
+  border: none;
+}
+
+/* ── Language tag ── */
 .story-info {
-  margin-top: 15px;
+  margin-top: 4px;
 }
 
 .language-tag {
   background: #f0f0f0;
-  color: #666;
-  padding: 5px 12px;
-  border-radius: 15px;
-  font-size: 0.9rem;
+  color: #777;
+  padding: 4px 12px;
+  border-radius: 14px;
+  font-size: 0.85rem;
   display: inline-block;
 }
 
-@media (max-width: 768px) {
-  .story-container {
-    grid-template-columns: 1fr;
-  }
+/* ── Loading ── */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-size: 1.4rem;
+  color: white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
 
-  .story-image {
-    padding: 20px;
-  }
+.no-story {
+  color: #aaa;
+  font-style: italic;
+  text-align: center;
+  padding: 40px;
+}
 
+/* ── Mobile ── */
+@media (max-width: 600px) {
   .story-header h1 {
-    font-size: 1.8rem;
+    font-size: 1.6rem;
   }
 
-  .back-btn, .done-btn {
-    padding: 8px 15px;
-    font-size: 0.9rem;
+  .back-btn,
+  .done-btn {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+  }
+
+  .story-text-block {
+    padding: 28px 24px 20px;
+  }
+
+  .story-image-block {
+    padding: 0 24px 24px;
+  }
+
+  .story-controls {
+    padding: 18px 24px 24px;
+  }
+
+  .story-paragraphs {
+    font-size: 1.15rem;
+  }
+
+  .narrator-settings {
+    gap: 16px;
+  }
+
+  .speed-slider {
+    width: 90px;
   }
 }

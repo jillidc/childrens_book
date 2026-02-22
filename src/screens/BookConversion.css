@@ -1,0 +1,145 @@
+.book-conversion-screen {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+}
+
+.book-conversion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 900px;
+  margin: 0 auto 20px;
+}
+
+.book-conversion-header h1 {
+  color: white;
+  font-size: 1.8rem;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}
+
+.book-conversion-header .back-btn,
+.book-conversion-header .library-link-btn {
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: 2px solid white;
+  padding: 10px 18px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.book-conversion-header .back-btn:hover,
+.book-conversion-header .library-link-btn:hover {
+  background: white;
+  color: #667eea;
+}
+
+.book-conversion-container {
+  max-width: 900px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.book-conversion-intro {
+  color: #555;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.book-conversion-textarea {
+  width: 100%;
+  min-height: 200px;
+  padding: 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  font-size: 1rem;
+  line-height: 1.6;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.book-conversion-textarea:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.book-conversion-error {
+  color: #c00;
+  margin-top: 12px;
+  padding: 10px;
+  background: #ffe0e0;
+  border-radius: 8px;
+}
+
+.book-conversion-submit {
+  margin-top: 20px;
+  background: linear-gradient(135deg, #48c78e, #06d6a0);
+  color: white;
+  border: none;
+  padding: 14px 28px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  border-radius: 25px;
+  cursor: pointer;
+}
+
+.book-conversion-submit:hover:not(:disabled) {
+  opacity: 0.95;
+  transform: translateY(-1px);
+}
+
+.book-conversion-submit:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.book-conversion-result {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 2px solid #f0f0f0;
+}
+
+.book-conversion-result h2 {
+  color: #667eea;
+  margin-bottom: 12px;
+  font-size: 1.3rem;
+}
+
+.simplified-text {
+  white-space: pre-wrap;
+  line-height: 1.7;
+  color: #333;
+  margin-bottom: 24px;
+}
+
+.scenes-list {
+  display: grid;
+  gap: 20px;
+}
+
+.scene-card {
+  border: 1px solid #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fafafa;
+}
+
+.scene-image {
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  display: block;
+}
+
+.scene-description {
+  padding: 12px 16px;
+  margin: 0;
+  color: #444;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
