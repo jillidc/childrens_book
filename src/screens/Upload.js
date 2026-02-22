@@ -4,6 +4,7 @@ import storyService from '../services/storyService';
 import './Upload.css';
 import bgImage from '../assets/Jillian-BG.png';
 import libraryIcon from '../assets/bluescribble.png';
+import drawingImg from '../assets/drawing.PNG';
 
 const Upload = () => {
   const [image, setImage] = useState(null);
@@ -81,7 +82,7 @@ const Upload = () => {
               <img src={imagePreview} alt="Preview" className="image-preview" />
             ) : (
               <div className="upload-placeholder">
-                <div className="upload-icon">🎨</div>
+                <div className="upload-icon"><img src={drawingImg} alt="" className="upload-drawing-img" /></div>
                 <p>Upload your drawing</p>
               </div>
             )}

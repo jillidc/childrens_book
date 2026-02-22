@@ -127,6 +127,13 @@
   flex-shrink: 0;
 }
 
+.fact-drawing-img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
 .fun-fact p {
   margin: 0;
   color: #666;

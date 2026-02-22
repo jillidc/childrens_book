@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import storyService from '../services/storyService';
 import './Library.css';
 import bgImage from '../assets/Jillian-BG.png';
+import bookPjImage from '../assets/book-PJ.PNG';
 
 const Library = () => {
   const [stories, setStories] = useState([]);
@@ -73,7 +74,9 @@ const Library = () => {
       <div className="library-container">
         {stories.length === 0 ? (
           <div className="empty-library">
-            <div className="empty-icon">📚</div>
+            <div className="empty-icon">
+              <img src={bookPjImage} alt="Books" className="empty-library-book-img" />
+            </div>
             <h2>No stories yet!</h2>
             <p>Create your first story to see it here.</p>
             <button className="create-first-btn" onClick={goHome}>

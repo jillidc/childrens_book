@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Done.css';
 import cloudBg from '../assets/cloud-background.png';
+import drawingImg from '../assets/drawing.PNG';
 
 const Done = () => {
   const navigate = useNavigate();
@@ -48,7 +49,7 @@ const Done = () => {
             <p>Every story you create is unique and special!</p>
           </div>
           <div className="fun-fact">
-            <span className="fact-icon">🎨</span>
+            <span className="fact-icon"><img src={drawingImg} alt="" className="fact-drawing-img" /></span>
             <p>Your imagination brought this story to life!</p>
           </div>
         </div>

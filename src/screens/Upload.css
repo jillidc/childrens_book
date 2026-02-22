@@ -96,6 +96,12 @@
   font-size: 3rem;
 }
 
+.upload-drawing-img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
 .upload-placeholder p {
   font-size: 1.2rem;
   color: #666;
