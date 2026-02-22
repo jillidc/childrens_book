@@ -156,7 +156,6 @@ const Loading = () => {
         </div>
 
         <div className="loading-details">
-          <p>We're creating a personalized story just for you!</p>
         </div>
       </div>
     </div>
