@@ -4,17 +4,17 @@ import { generateStory } from '../services/geminiService';
 import storyService from '../services/storyService';
 import './Loading.css';
 
+const loadingMessages = [
+  "Creating your magical story...",
+  "Adding characters and adventures...",
+  "Sprinkling some magic dust...",
+  "Almost ready to read!"
+];
+
 const Loading = () => {
   const [loadingText, setLoadingText] = useState("Creating your magical story...");
   const [progress, setProgress] = useState(0);
   const navigate = useNavigate();
-
-  const loadingMessages = [
-    "Creating your magical story...",
-    "Adding characters and adventures...",
-    "Sprinkling some magic dust...",
-    "Almost ready to read!"
-  ];
 
   useEffect(() => {
     const generateUserStory = async () => {
@@ -34,35 +34,66 @@ const Loading = () => {
           }
         }, 1500);
 
-        const generatedStory = await generateStory(
+        // Prefer the DO Spaces URL (full-res) over the tiny thumbnail for AI parsing
+        const imageForApi = storyData.imageUrl || storyData.imagePreview || null;
+        const data = await generateStory(
           storyData.description,
           storyData.language,
-          storyData.translationLanguage
+          storyData.translationLanguage,
+          imageForApi
         );
 
         clearInterval(messageInterval);
         setProgress(100);
         setLoadingText("Story ready!");
 
+        const fullText = data.fullText || data.story || '';
+        const pages = data.pages || [{ text: fullText, imageUrl: null }];
+
         const completeStory = {
           ...storyData,
-          storyText: generatedStory,
-          title: `Story #${Date.now()}`,
-          createdAt: new Date().toISOString()
+          pages,
+          fullText,
+          storyText: fullText,
+          story: fullText,
+          title: storyData.title || `Story #${Date.now()}`,
+          createdAt: storyData.createdAt || new Date().toISOString()
         };
 
-        // Save story to backend
+        // Save to backend (it handles its own storage)
         try {
-          const savedStory = await storyService.createStory(completeStory);
-          localStorage.setItem('currentStory', JSON.stringify(savedStory));
+          await storyService.createStory({
+            ...completeStory,
+            storyText: fullText
+          });
         } catch (error) {
           console.error('Error saving story to backend:', error);
-          // Fallback to localStorage only
-          localStorage.setItem('currentStory', JSON.stringify(completeStory));
+        }
 
-          const existingStories = JSON.parse(localStorage.getItem('userStories') || '[]');
-          existingStories.unshift(completeStory);
-          localStorage.setItem('userStories', JSON.stringify(existingStories));
+        // For localStorage: keep pages but strip any huge data-URL images
+        // to avoid exceeding the ~5 MB quota
+        const pagesForStorage = pages.map(p => ({
+          text: p.text,
+          imageUrl: p.imageUrl && !p.imageUrl.startsWith('data:') ? p.imageUrl : null
+        }));
+        const storyForStorage = {
+          ...completeStory,
+          pages: pagesForStorage,
+          imagePreview: storyData.imagePreview
+        };
+        try {
+          localStorage.setItem('currentStory', JSON.stringify(storyForStorage));
+        } catch (e) {
+          console.warn('localStorage full, storing minimal data');
+          localStorage.setItem('currentStory', JSON.stringify({
+            description: storyData.description,
+            language: storyData.language,
+            fullText,
+            story: fullText,
+            pages: pages.map(p => ({ text: p.text, imageUrl: null })),
+            title: completeStory.title,
+            createdAt: completeStory.createdAt
+          }));
         }
 
         setTimeout(() => navigate('/story'), 1000);
@@ -74,6 +105,7 @@ const Loading = () => {
     };
 
     generateUserStory();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- loadingMessages is a module-level constant
   }, [navigate]);
 
   return (

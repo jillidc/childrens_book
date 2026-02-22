@@ -5,6 +5,23 @@ import './Upload.css';
 import bgImage from '../assets/Jillian-BG.png';
 import libraryIcon from '../assets/bluescribble.png';
 
+function createThumbnail(dataUrl, maxSize = 200) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.6));
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
 const Upload = () => {
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -25,8 +42,9 @@ const Upload = () => {
 
   const handleSubmit = async () => {
     if (image && description.trim()) {
+      const thumbnail = await createThumbnail(imagePreview);
+
       try {
-        // Upload image to backend first
         const uploadResult = await storyService.uploadImage(image, {
           maxWidth: 1200,
           quality: 85
@@ -37,28 +55,22 @@ const Upload = () => {
           language,
           translationLanguage,
           imageUrl: uploadResult.url,
-          imageFileName: uploadResult.originalName
+          imageFileName: uploadResult.originalName,
+          imagePreview: thumbnail || uploadResult.url
         };
 
-        localStorage.setItem('currentStory', JSON.stringify({
-          ...storyData,
-          imagePreview: uploadResult.isLocal ? uploadResult.url : imagePreview
-        }));
-
+        localStorage.setItem('currentStory', JSON.stringify(storyData));
         navigate('/loading');
       } catch (error) {
         console.error('Error uploading image:', error);
 
-        // Fallback to local storage approach
         const storyData = {
           description,
           language,
-          translationLanguage
+          translationLanguage,
+          imagePreview: thumbnail
         };
-        localStorage.setItem('currentStory', JSON.stringify({
-          ...storyData,
-          imagePreview
-        }));
+        localStorage.setItem('currentStory', JSON.stringify(storyData));
         navigate('/loading');
       }
     }
@@ -149,9 +161,14 @@ const Upload = () => {
         </button>
       </div>
 
-      <div className="library-footer" onClick={goToLibrary}>
-        <img src={libraryIcon} alt="My Library" className="library-btn-img" />
-        <span className="library-btn-text">My Library</span>
+      <div className="upload-footer-links">
+        <div className="library-footer" onClick={goToLibrary}>
+          <img src={libraryIcon} alt="My Library" className="library-btn-img" />
+          <span className="library-btn-text">My Library</span>
+        </div>
+        <div className="book-conversion-link" onClick={() => navigate('/book-conversion')}>
+          <span className="library-btn-text">📚 Convert a Book</span>
+        </div>
       </div>
     </div>
   );

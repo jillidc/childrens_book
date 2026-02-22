@@ -5,7 +5,6 @@ const User = require('../models/User');
 
 // Validation schemas
 const createUserSchema = Joi.object({
-  walletAddress: Joi.string().optional().allow(null),
   username: Joi.string().min(1).max(100).optional().allow(null),
   email: Joi.string().email().optional().allow(null)
 });
@@ -15,7 +14,7 @@ const updateUserSchema = Joi.object({
   email: Joi.string().email().optional().allow(null)
 });
 
-// POST /api/users - Create or find user by wallet
+// POST /api/users - Create user (optional username/email; use /api/auth/register for full signup)
 router.post('/', async (req, res) => {
   try {
     const { error, value } = createUserSchema.validate(req.body);
@@ -27,29 +26,13 @@ router.post('/', async (req, res) => {
       });
     }
 
-    let user;
-
-    if (value.walletAddress) {
-      // Find or create user by wallet address
-      user = await User.findOrCreateByWallet(value.walletAddress);
-
-      // Update other fields if provided
-      if (value.username) user.username = value.username;
-      if (value.email) user.email = value.email;
-
-      if (value.username || value.email) {
-        await user.update();
-      }
-    } else {
-      // Create anonymous user
-      user = new User(value);
-      await user.save();
-    }
+    const user = new User(value);
+    await user.save();
 
     res.status(201).json({
       success: true,
       data: user.toJSON(),
-      message: 'User created/updated successfully'
+      message: 'User created successfully'
     });
   } catch (error) {
     console.error('Error creating user:', error);
@@ -80,33 +63,6 @@ router.get('/:id', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching user:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch user'
-    });
-  }
-});
-
-// GET /api/users/wallet/:address - Get user by wallet address
-router.get('/wallet/:address', async (req, res) => {
-  try {
-    const { address } = req.params;
-
-    const user = await User.findByWalletAddress(address);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: user.toJSON()
-    });
-  } catch (error) {
-    console.error('Error fetching user by wallet:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch user'
