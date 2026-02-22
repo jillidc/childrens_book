@@ -9,7 +9,7 @@ const generateStorySchema = Joi.object({
   description: Joi.string().min(1).max(2000).required(),
   language: Joi.string().valid('english', 'spanish', 'french', 'chinese').default('english'),
   translationLanguage: Joi.string().valid('english', 'spanish', 'french', 'chinese').optional().allow(null),
-  imageUrl: Joi.string().max(500000).optional().allow(null, ''),
+  imageUrl: Joi.string().max(10000000).optional().allow(null, ''),
   imageBase64: Joi.object({
     mimeType: Joi.string().optional(),
     data: Joi.string().required()
@@ -122,9 +122,11 @@ function getFallbackStory(description, language) {
 
 // POST /api/generate-story
 router.post('/', async (req, res) => {
+  console.log(`[generate-story] Request received — description: "${(req.body.description || '').slice(0, 80)}", hasImage: ${!!req.body.imageUrl}, imageLen: ${(req.body.imageUrl || '').length}`);
   try {
     const { error, value } = generateStorySchema.validate(req.body, { stripUnknown: true });
     if (error) {
+      console.warn('[generate-story] Joi validation failed:', error.details[0].message);
       return res.status(400).json({ success: false, error: error.details[0].message });
     }
 

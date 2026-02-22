@@ -15,8 +15,16 @@ export const generateStory = async (
       description,
       language,
       ...(translationLanguage && { translationLanguage }),
-      ...(imageUrl && { imageUrl })
     };
+
+    if (imageUrl) {
+      const dataMatch = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+      if (dataMatch) {
+        requestData.imageBase64 = { mimeType: dataMatch[1], data: dataMatch[2] };
+      } else {
+        requestData.imageUrl = imageUrl;
+      }
+    }
 
     const response = await apiService.post('/generate-story', requestData);
 

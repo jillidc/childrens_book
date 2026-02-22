@@ -10,6 +10,17 @@ import cloudDrawBg from '../assets/blue-cloud-bg.png';
 import blue1Img from '../assets/blue-1.PNG';
 import trashImg from '../assets/trash.PNG';
 
+function getCoverImage(story) {
+  if (story.imagePreview || story.imageUrl) return story.imagePreview || story.imageUrl;
+  try {
+    const parsed = JSON.parse(story.storyText);
+    if (parsed?.version === 2 && parsed.pages?.[0]?.imageUrl) {
+      return parsed.pages[0].imageUrl;
+    }
+  } catch (_) {}
+  return null;
+}
+
 const Library = () => {
   const [stories, setStories] = useState([]);
   const { user } = useAuth();
@@ -112,9 +123,9 @@ const Library = () => {
                 }}
               >
                 <div className="story-image">
-                  {(story.imagePreview || story.imageUrl) ? (
+                  {getCoverImage(story) ? (
                     <img
-                      src={story.imagePreview || story.imageUrl}
+                      src={getCoverImage(story)}
                       alt={`Story ${index + 1}`}
                       className="story-thumbnail"
                     />

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { generateStory } from '../services/geminiService';
 import storyService from '../services/storyService';
 import './Loading.css';
@@ -17,6 +17,7 @@ const Loading = () => {
   const [loadingText, setLoadingText] = useState(loadingMessages[0]);
   const [progress, setProgress] = useState(0);
   const navigate = useNavigate();
+  const location = useLocation();
   const hasStarted = useRef(false);
 
   useEffect(() => {
@@ -40,8 +41,7 @@ const Loading = () => {
           }
         }, 1500);
 
-        // Prefer the DO Spaces URL (full-res) over the tiny thumbnail for AI parsing
-        const imageForApi = storyData.imageUrl || storyData.imagePreview || null;
+        const imageForApi = location.state?.imageDataUrl || storyData.imageUrl || storyData.imagePreview || null;
         const data = await generateStory(
           storyData.description,
           storyData.language,
@@ -72,17 +72,21 @@ const Loading = () => {
           createdAt: storyData.createdAt || new Date().toISOString()
         };
 
-        // Save to backend -- only send fields the API expects
+        // Save to backend -- serialize pages (with image URLs) as versioned JSON
         try {
+          const pagesPayload = pages.map(p => ({
+            text: p.text,
+            imageUrl: (p.imageUrl && !p.imageUrl.startsWith('data:')) ? p.imageUrl : null
+          }));
+
           const backendPayload = {
             title: completeStory.title,
             description: completeStory.description,
-            storyText: fullText,
+            storyText: JSON.stringify({ version: 2, pages: pagesPayload }),
             language: completeStory.language,
             translationLanguage: completeStory.translationLanguage || null,
             imageFileName: completeStory.imageFileName || null,
           };
-          // Only include imageUrl if it's a real remote URL (not blob: or data:)
           if (completeStory.imageUrl && !completeStory.imageUrl.startsWith('blob:') && !completeStory.imageUrl.startsWith('data:')) {
             backendPayload.imageUrl = completeStory.imageUrl;
           }

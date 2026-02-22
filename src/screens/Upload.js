@@ -68,13 +68,13 @@ const Upload = () => {
         description,
         language,
         translationLanguage,
-        imageUrl: remoteUrl || imagePreview,
+        imageUrl: remoteUrl || null,
         imageFileName: fileName || image.name,
         imagePreview: thumbnail || remoteUrl || null
       };
 
       localStorage.setItem('currentStory', JSON.stringify(storyData));
-      navigate('/loading');
+      navigate('/loading', { state: { imageDataUrl: remoteUrl || imagePreview } });
     }
   };
 

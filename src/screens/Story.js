@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { generateWithTimestamps, clampSpeed } from '../services/elevenLabsService';
 import openBook from '../assets/open-book.png';
 import './Story.css';
 import nightSky from '../assets/night-sky.png';
@@ -30,14 +31,40 @@ function getPagesFromStory(storyData) {
   return pages.length > 0 ? pages : [{ text: raw, imageUrl: null }];
 }
 
+const SPEED_OPTIONS = [
+  { value: 0.8,  label: 'Slow'   },
+  { value: 1.0,  label: 'Medium' },
+  { value: 1.15, label: 'Fast'   },
+];
+
+function HighlightedText({ text, charStart, charEnd }) {
+  if (charStart == null || charEnd == null) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, charStart)}
+      <mark className="word-highlight">{text.slice(charStart, charEnd)}</mark>
+      {text.slice(charEnd)}
+    </>
+  );
+}
+
 const Story = () => {
   const [storyData, setStoryData] = useState(null);
   const [currentSpread, setCurrentSpread] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [isFlipping, setIsFlipping] = useState(false);
   const [flipDirection, setFlipDirection] = useState('');
+  const [readingSpeed, setReadingSpeed] = useState(1.0);
+  const [highlightRange, setHighlightRange] = useState({ start: null, end: null });
+
+  const audioRef = useRef(null);
+  const wordTimingsRef = useRef([]);
+  const readingSpeedRef = useRef(readingSpeed);
   const utteranceRef = useRef(null);
   const navigate = useNavigate();
+
+  useEffect(() => { readingSpeedRef.current = readingSpeed; }, [readingSpeed]);
 
   const pages = useMemo(
     () => (storyData ? getPagesFromStory(storyData) : []),
@@ -57,24 +84,30 @@ const Story = () => {
     }
   }, [navigate]);
 
-  useEffect(() => {
-    return () => {
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-    };
-  }, []);
-
   const stopSpeech = useCallback(() => {
+    if (audioRef.current) {
+      const oldSrc = audioRef.current.src;
+      audioRef.current.pause();
+      audioRef.current = null;
+      if (oldSrc.startsWith('blob:')) URL.revokeObjectURL(oldSrc);
+    }
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     utteranceRef.current = null;
+    wordTimingsRef.current = [];
     setIsPlaying(false);
+    setIsLoadingAudio(false);
+    setHighlightRange({ start: null, end: null });
   }, []);
 
-  const speakText = useCallback((text) => {
-    stopSpeech();
+  useEffect(() => {
+    return () => { stopSpeech(); };
+  }, [stopSpeech]);
+
+  const speakWithSynthesis = useCallback((text) => {
     if (!text || !('speechSynthesis' in window)) return;
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.85;
+    utterance.rate = readingSpeedRef.current;
     utterance.pitch = 1.1;
 
     const voices = window.speechSynthesis.getVoices();
@@ -97,17 +130,75 @@ const Story = () => {
     utteranceRef.current = utterance;
     setIsPlaying(true);
     window.speechSynthesis.speak(utterance);
-  }, [stopSpeech]);
+  }, []);
+
+  const speakPage = useCallback(async (text) => {
+    stopSpeech();
+    if (!text) return;
+
+    setIsLoadingAudio(true);
+
+    try {
+      const result = await generateWithTimestamps(text, {
+        speed: clampSpeed(readingSpeedRef.current)
+      });
+
+      if (!result) {
+        setIsLoadingAudio(false);
+        speakWithSynthesis(text);
+        return;
+      }
+
+      const { audioUrl, wordTimings } = result;
+      wordTimingsRef.current = wordTimings;
+
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.addEventListener('timeupdate', () => {
+        const t = audio.currentTime;
+        const timings = wordTimingsRef.current;
+        const hit = timings.find(w => t >= w.startTime && t <= w.endTime);
+        if (hit) {
+          setHighlightRange({ start: hit.charStart, end: hit.charEnd });
+        }
+      });
+
+      audio.onended = () => {
+        const src = audio.src;
+        audioRef.current = null;
+        wordTimingsRef.current = [];
+        setIsPlaying(false);
+        setHighlightRange({ start: null, end: null });
+        if (src.startsWith('blob:')) URL.revokeObjectURL(src);
+      };
+
+      audio.onerror = () => {
+        audioRef.current = null;
+        setIsPlaying(false);
+        setIsLoadingAudio(false);
+        setHighlightRange({ start: null, end: null });
+      };
+
+      setIsLoadingAudio(false);
+      setIsPlaying(true);
+      await audio.play();
+    } catch (err) {
+      console.error('speakPage error:', err);
+      setIsLoadingAudio(false);
+      speakWithSynthesis(text);
+    }
+  }, [stopSpeech, speakWithSynthesis]);
 
   const handlePlayPause = useCallback(() => {
-    if (isPlaying) {
+    if (isPlaying || isLoadingAudio) {
       stopSpeech();
     } else {
       const left = pages[leftIdx]?.text || '';
       const right = pages[rightIdx]?.text || '';
-      speakText([left, right].filter(Boolean).join('. '));
+      speakPage([left, right].filter(Boolean).join(' '));
     }
-  }, [isPlaying, stopSpeech, speakText, pages, leftIdx, rightIdx]);
+  }, [isPlaying, isLoadingAudio, stopSpeech, speakPage, pages, leftIdx, rightIdx]);
 
   const goToNextSpread = useCallback(() => {
     if (currentSpread < totalSpreads - 1 && !isFlipping) {
@@ -147,6 +238,29 @@ const Story = () => {
   const leftImage = leftPage?.imageUrl || (currentSpread === 0 ? (storyData.imagePreview || storyData.imageUrl) : null);
   const rightImage = rightPage?.imageUrl || null;
 
+  const spreadText = [leftPage?.text, rightPage?.text].filter(Boolean).join(' ');
+  const leftLen = leftPage?.text?.length || 0;
+
+  const leftHlStart = highlightRange.start != null && highlightRange.start < leftLen
+    ? highlightRange.start : null;
+  const leftHlEnd = leftHlStart != null
+    ? Math.min(highlightRange.end, leftLen) : null;
+
+  const rightHlStart = highlightRange.start != null && highlightRange.start >= leftLen + 1
+    ? highlightRange.start - leftLen - 1 : null;
+  const rightHlEnd = rightHlStart != null
+    ? highlightRange.end - leftLen - 1 : null;
+
+  const playBtnClass = isLoadingAudio ? 'play-btn loading'
+    : isPlaying ? 'play-btn playing'
+    : 'play-btn';
+
+  const playBtnLabel = isLoadingAudio
+    ? 'Loading...'
+    : isPlaying
+      ? <>&nbsp;&#9208;&#65039; Pause Story</>
+      : <>&nbsp;&#128266; Read Story Aloud</>;
+
   return (
     <div className="story-screen" style={{ backgroundImage: `url(${nightSky})` }}>
       <div className="scrolling-clouds" style={{ backgroundImage: `url(${cloudsPng})` }} />
@@ -167,7 +281,13 @@ const Story = () => {
                   {leftImage && (
                     <img src={leftImage} alt={`Page ${leftIdx + 1}`} className="page-drawing" />
                   )}
-                  <p className="page-text">{leftPage.text}</p>
+                  <p className="page-text">
+                    <HighlightedText
+                      text={leftPage.text}
+                      charStart={leftHlStart}
+                      charEnd={leftHlEnd}
+                    />
+                  </p>
                   <span className="page-number">{leftIdx + 1}</span>
                 </>
               )}
@@ -181,7 +301,13 @@ const Story = () => {
                   {rightImage && (
                     <img src={rightImage} alt={`Page ${rightIdx + 1}`} className="page-drawing" />
                   )}
-                  <p className="page-text">{rightPage.text}</p>
+                  <p className="page-text">
+                    <HighlightedText
+                      text={rightPage.text}
+                      charStart={rightHlStart}
+                      charEnd={rightHlEnd}
+                    />
+                  </p>
                   <span className="page-number">{rightIdx + 1}</span>
                 </>
               ) : leftPage ? (
@@ -201,12 +327,29 @@ const Story = () => {
 
       <div className="story-controls">
         <button
-          className={`play-btn ${isPlaying ? 'playing' : ''}`}
+          className={playBtnClass}
           onClick={handlePlayPause}
           disabled={pages.length === 0}
         >
-          {isPlaying ? <>&nbsp;&#9208;&#65039; Pause Story</> : <>&nbsp;&#128266; Read Story Aloud</>}
+          {playBtnLabel}
         </button>
+
+        <div className="narrator-settings">
+          <div className="setting-item">
+            <span className="setting-label">Speed</span>
+            <div className="speed-btn-group">
+              {SPEED_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  className={`speed-option ${readingSpeed === opt.value ? 'active' : ''}`}
+                  onClick={() => setReadingSpeed(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
 
         {storyData.language && (
           <span className="language-tag">Language: {storyData.language}</span>
