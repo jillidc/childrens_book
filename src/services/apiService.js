@@ -1,5 +1,7 @@
 // Central API service for backend communication
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+const raw = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+// Ensure base URL ends with /api so paths like "auth/login" become /api/auth/login
+const API_BASE_URL = raw.endsWith('/api') ? raw.replace(/\/+$/, '') : raw.replace(/\/?$/, '') + '/api';
 
 class ApiService {
   constructor() {

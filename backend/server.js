@@ -93,9 +93,21 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Root — so hitting the base URL is clear (use /api/... for real endpoints)
+app.get('/', (req, res) => {
+  res.status(200).json({
+    message: 'Draw My Story API',
+    docs: 'Use /api/ for endpoints. Health: GET /api/health',
+    endpoints: ['/api/health', '/api/auth/login', '/api/auth/register', '/api/stories', '/api/generate-story', '/api/text-to-speech', '/api/upload', '/api/users', '/api/describe-image', '/api/generate-image']
+  });
+});
+
 // 404 handler
 app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Endpoint not found' });
+  res.status(404).json({
+    error: 'Endpoint not found',
+    hint: 'API base is /api/ — e.g. GET /api/health, POST /api/auth/login'
+  });
 });
 
 // Error handling middleware
