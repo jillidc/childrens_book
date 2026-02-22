@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { generateStory } from '../services/geminiService';
 import storyService from '../services/storyService';
 import './Loading.css';
-import cloudBg from '../assets/cloud-background.png';
+import nightSky from '../assets/night-sky.png';
+import cloudsPng from '../assets/clouds.png';
 
 const loadingMessages = [
   "Creating your magical story...",
@@ -78,7 +79,8 @@ const Loading = () => {
   }, [navigate]);
 
   return (
-    <div className="loading-screen" style={{ backgroundImage: `url(${cloudBg})` }}>
+    <div className="loading-screen" style={{ backgroundImage: `url(${nightSky})` }}>
+      <div className="scrolling-clouds" style={{ backgroundImage: `url(${cloudsPng})` }} />
       <div className="loading-container">
         <div className="loading-animation">
           <div className="magic-wand">🪄</div>

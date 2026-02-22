@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { playAudio } from '../services/elevenLabsService';
 import openBook from '../assets/open-book.png';
 import './Story.css';
-import cloudBackground from '../assets/cloud-background.png';
+import nightSky from '../assets/night-sky.png';
+import cloudsPng from '../assets/clouds.png';
 
 const splitIntoPages = (text) => {
   if (!text) return [];
@@ -124,7 +125,8 @@ const Story = () => {
   }
 
   return (
-    <div className="story-screen" style={{ backgroundImage: `url(${cloudBackground})` }}>
+    <div className="story-screen" style={{ backgroundImage: `url(${nightSky})` }}>
+      <div className="scrolling-clouds" style={{ backgroundImage: `url(${cloudsPng})` }} />
       <div className="story-header">
         <button className="back-btn" onClick={goBack}>
           ← Back

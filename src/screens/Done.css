@@ -6,8 +6,10 @@
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  background-color: #b3d9ff;
+  background-color: #0b1a3b;
   padding: 20px;
+  position: relative;
+  overflow: hidden;
 }
 
 .done-container {
@@ -17,6 +19,8 @@
   padding: 50px 40px;
   text-align: center;
   box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  position: relative;
+  z-index: 2;
 }
 
 .celebration {
@@ -160,4 +164,25 @@
   60% {
     transform: translateY(-5px);
   }
+}
+
+/* Scrolling clouds overlay */
+.done-screen .scrolling-clouds {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 200%;
+  height: 100%;
+  background-repeat: repeat-x;
+  background-size: 50% auto;
+  background-position: 0 center;
+  animation: scroll-clouds 60s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.6;
+}
+
+@keyframes scroll-clouds {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
